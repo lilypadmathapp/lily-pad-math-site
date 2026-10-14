@@ -274,8 +274,14 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--sun);outline-of
 .reward-art{width:140px;height:140px}
 #gateIn{font:800 2rem/1 var(--num);width:5ch;text-align:center;padding:8px;border-radius:12px;border:3px solid var(--line);background:var(--bg);color:var(--ink);-webkit-user-select:text;user-select:text}
 #privacy{z-index:20}
+#paywall{z-index:25}
+#locked{z-index:15}
+#gate{z-index:30}
 .privacy-panel{width:min(760px,100%);height:88vh;max-height:none}
 #privacyFrame{flex:1;width:100%;border:0;border-radius:14px;background:var(--bg)}
+.perks{margin:0;padding-left:1.2em;line-height:1.6}
+#locked .big-frog{width:min(130px,34vw)}
+#locked .big-frog svg{display:block;width:100%}
 #voicePick{font:inherit;font-size:1rem;padding:8px 10px;border-radius:12px;border:2px solid var(--line);background:var(--bg);color:var(--ink);max-width:100%}
 .mgrid{display:grid;grid-template-columns:repeat(var(--k),clamp(70px,17vw,130px));gap:8px}
 .mtile{aspect-ratio:1;background:var(--water-soft);border:3px solid var(--line);border-radius:14px;display:grid;place-items:center;font:800 2.4rem/1 var(--num);color:var(--sun)}
@@ -378,6 +384,36 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--sun);outline-of
   </div>
 </div>
 
+<div class="overlay" id="locked" hidden>
+  <div class="panel party">
+    <div class="big-frog" id="lockFrog"></div>
+    <h2>Pip needs a grown-up!</h2>
+    <p id="lockText"></p>
+    <button class="go" id="lockAsk">Get a grown-up</button>
+    <button class="btn" id="lockBack">Back</button>
+  </div>
+</div>
+
+<div class="overlay" id="paywall" hidden>
+  <div class="panel grown" role="dialog" aria-labelledby="payTitle">
+    <h2 id="payTitle">Unlock Lily Pad Math</h2>
+    <p id="payWhy"></p>
+    <ul class="perks">
+      <li>Unlimited play in every game, for every skill level</li>
+      <li>All three bonus teams: Electricity Sheriffs, Hop Squad and Ant Team</li>
+      <li>Add every child in the family, each with their own progress</li>
+      <li>Every future update</li>
+    </ul>
+    <p>One-time purchase. No subscription and no ads. Family Sharing included.</p>
+    <div class="btns">
+      <button class="btn primary" id="payBuy">Unlock everything</button>
+      <button class="btn" id="payRestore">Restore purchase</button>
+      <button class="btn" id="payClose">Not now</button>
+    </div>
+    <p id="payMsg" role="status"></p>
+  </div>
+</div>
+
 <div class="overlay" id="gate" hidden>
   <div class="panel grown" role="dialog" aria-labelledby="gateTitle">
     <h2 id="gateTitle">Grown-ups only</h2>
@@ -433,6 +469,12 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--sun);outline-of
       <p style="flex-basis:100%" id="confirmText"></p>
       <button class="btn danger" id="confirmYes">Yes</button>
       <button class="btn" id="confirmNo">Cancel</button>
+    </div>
+
+    <div id="fullRow" hidden>
+      <h3>Full version</h3>
+      <p id="fullStatus"></p>
+      <div class="btns" id="fullBtns"><button class="btn primary" id="fullBuy">Unlock everything</button><button class="btn" id="fullRestore">Restore purchase</button></div>
     </div>
 
     <h3>Settings</h3>
@@ -516,7 +558,7 @@ const START = { count: 3, flash: 2, numeral: 3, compare: 3, next: 2, add: 2, sub
 /* ---------- running inside the iOS app (Capacitor) ---------- */
 const CAP = window.Capacitor, NATIVE = !!(CAP && CAP.isNativePlatform && CAP.isNativePlatform());
 const nativePlugin = name => NATIVE ? ((CAP.Plugins && CAP.Plugins[name]) || (CAP.registerPlugin && CAP.registerPlugin(name)) || null) : null;
-const TTS = nativePlugin('TextToSpeech'), PREFS = nativePlugin('Preferences');
+const TTS = nativePlugin('TextToSpeech'), PREFS = nativePlugin('Preferences'), IAP = nativePlugin('NativePurchases');
 
 /* ---------- players + storage ---------- */
 const KEY = 'lilypad-math-v2', OLD_KEY = 'lilypad-math-v1';
@@ -2307,7 +2349,72 @@ function renderQ() {
   }
 }
 
+/* ---------- free version and the one-time unlock (iOS app only) ---------- */
+// Free: 50 hops (5 ponds) in all, one child, and one mission with each bonus team.
+const FREE_HOPS = 50, PRODUCT_ID = 'com.lilypadmathapp.lilypadmath.full';
+const paid = () => !IAP || !!store.unlocked;   // the website version has no purchase and stays open
+const outOfHops = () => !paid() && (store.hops || 0) >= FREE_HOPS;
+const teamLocked = m => !paid() && !!m && !!P && (P.badges[m] || 0) >= 1;
+function showLocked(kind) {
+  hush();
+  $('#lockFrog').innerHTML = FROG;
+  $('#lockText').textContent = kind === 'team'
+    ? `${P.name} finished the free ${THEMES[M].name} mission! Ask a grown-up to unlock every mission.`
+    : `You crossed 5 ponds! Ask a grown-up to unlock all the games.`;
+  $('#locked').hidden = false;
+  sayNow(kind === 'team' ? 'Great mission! Ask a grown-up to unlock more missions.' : 'Wow, you crossed 5 ponds! Ask a grown-up to unlock all the games.');
+}
+$('#lockAsk').addEventListener('click', () => askGate('buy'));
+$('#lockBack').addEventListener('click', () => { $('#locked').hidden = true; $('#home').click(); });
+let product = null;
+async function loadProduct() {
+  if (!IAP || product) return;
+  try { const r = await IAP.getProducts({ productIdentifiers: [PRODUCT_ID], productType: 'inapp' }); product = (r.products || [])[0] || null; } catch (e) {}
+  if (product && product.priceString) { $('#payBuy').textContent = `Unlock for ${product.priceString}`; $('#fullBuy').textContent = `Unlock for ${product.priceString}`; }
+}
+function openPaywall(why) {
+  hush();
+  $('#payWhy').textContent = why || 'The free version includes 5 ponds, one child, and one mission with each bonus team.';
+  $('#payMsg').textContent = ''; payBusy(false);
+  $('#paywall').hidden = false; loadProduct();
+}
+function payBusy(on) { ['#payBuy', '#payRestore', '#payClose'].forEach(id => $(id).disabled = on); }
+function setUnlocked() {
+  store.unlocked = true; save();
+  $('#paywall').hidden = true; chime(); showToast('Everything is unlocked. Thank you!');
+  if (!$('#grown').hidden) renderGrown();
+  if (!$('#locked').hidden) { $('#locked').hidden = true; if (!$('#playView').hidden) ask(); }
+}
+async function checkPurchased() {
+  if (!IAP) return false;
+  try { const r = await IAP.getPurchases({ productType: 'inapp' }); if ((r.purchases || []).some(t => t.productIdentifier === PRODUCT_ID)) { if (!store.unlocked) { store.unlocked = true; save(); } return true; } } catch (e) {}
+  return false;
+}
+$('#payBuy').addEventListener('click', async () => {
+  payBusy(true); $('#payMsg').textContent = 'Connecting to the App Store…';
+  try {
+    const t = await IAP.purchaseProduct({ productIdentifier: PRODUCT_ID, productType: 'inapp' });
+    if ((t && t.productIdentifier === PRODUCT_ID) || await checkPurchased()) return setUnlocked();
+    $('#payMsg').textContent = 'The purchase did not finish. Nothing was charged.';
+  } catch (e) {
+    $('#payMsg').textContent = /cancel/i.test(String(e && (e.message || e.code))) ? '' : 'The purchase did not go through. Please try again in a moment.';
+  }
+  payBusy(false);
+});
+$('#payRestore').addEventListener('click', async () => {
+  payBusy(true); $('#payMsg').textContent = 'Checking with the App Store…';
+  try { await IAP.restorePurchases(); } catch (e) {}
+  if (await checkPurchased()) return setUnlocked();
+  $('#payMsg').textContent = 'No earlier purchase was found for this Apple ID.'; payBusy(false);
+});
+$('#payClose').addEventListener('click', () => { $('#paywall').hidden = true; });
+$('#fullBuy').addEventListener('click', () => openPaywall());
+$('#fullRestore').addEventListener('click', () => { openPaywall(); $('#payRestore').click(); });
+if (IAP) checkPurchased();
+
 function ask() {
+  if (outOfHops()) return showLocked('hops');
+  if (M && teamLocked(M) && getPad() === 0) return showLocked('team');
   q = nextQuestion(); tries = 0; busy = false; q.graded = false;
   lastKey = q.skill + JSON.stringify(q.p);
   recentSkills.push(q.skill); if (recentSkills.length > 5) recentSkills.shift();
@@ -2328,6 +2435,7 @@ async function onAnswer(b) {
     document.querySelectorAll('#answers .ans').forEach(x => x.classList.remove('hint'));
     let ev = null;
     if (!q.graded) { q.graded = true; P.total++; ev = grade(q.skill, 1); }
+    store.hops = (store.hops || 0) + 1;
     chime();
     const praise = sayNow(pick(M ? THEMES[M].praise : PRAISE[P.track]));
     await sleep(350);
@@ -2505,10 +2613,11 @@ function renderModes() {
     b.append(a, el('b', '', name), el('small', '', sub)); box.append(b);
   };
   card(null, '🐸', 'Lily Pad', `All your games · ${P.stickers.length} pond ${P.stickers.length === 1 ? 'friend' : 'friends'}`);
-  for (const k in THEMES) { const th = THEMES[k], n = P.badges[k] || 0; card(k, THEME_ART[k].card(), th.name, `${th.tag} · ${n} ${th.rewardName}${n === 1 ? '' : 's'}`); }
+  for (const k in THEMES) { const th = THEMES[k], n = P.badges[k] || 0; card(k, THEME_ART[k].card(), th.name, `${th.tag} · ${n} ${th.rewardName}${n === 1 ? '' : 's'}${teamLocked(k) ? ' · 🔒' : ''}`); }
 }
 $('#modes').addEventListener('click', e => { const b = e.target.closest('.mode'); if (b) beginMode(b.dataset.mode || null); });
 function beginMode(m) {
+  if (m && teamLocked(m)) { M = m; return showLocked('team'); }
   M = m; lastT = -1; missionHero = '';
   $('#start').hidden = true; $('#modeView').hidden = true; $('#playView').hidden = false; $('#home').hidden = false; $('#friendsBtn').hidden = false;
   buildPond();
@@ -2540,7 +2649,7 @@ function askGate(tab) {
   $('#gateQ').textContent = `To continue, type the number ${TENS_W[Math.floor(gateAns / 10)]}${gateAns % 10 ? '-' + ONES[gateAns % 10] : ''} in digits.`;
   $('#gateIn').value = ''; $('#gate').hidden = false; setTimeout(() => $('#gateIn').focus(), 50);
 }
-function gateCheck() { const ok = parseInt($('#gateIn').value, 10) === gateAns; $('#gate').hidden = true; $('#gateIn').blur(); if (ok) openGrown(gateTab); }
+function gateCheck() { const ok = parseInt($('#gateIn').value, 10) === gateAns; $('#gate').hidden = true; $('#gateIn').blur(); if (ok) { if (gateTab === 'buy') openPaywall(); else openGrown(gateTab); } }
 $('#gateGo').addEventListener('click', gateCheck);
 $('#gateIn').addEventListener('keydown', e => { if (e.key === 'Enter') gateCheck(); });
 $('#gateNo').addEventListener('click', () => { $('#gate').hidden = true; $('#gateIn').blur(); });
@@ -2560,7 +2669,16 @@ function ageButtons(box, current, onPick) {
   box.replaceChildren();
   [3, 4, 5, 6].forEach(a => { const b = el('button', '', String(a)); b.type = 'button'; b.setAttribute('aria-pressed', a === current ? 'true' : 'false'); b.onclick = () => onPick(a); box.append(b); });
 }
+function renderFull() {
+  $('#fullRow').hidden = !IAP;
+  if (!IAP) return;
+  $('#fullBtns').hidden = !!store.unlocked;
+  $('#fullStatus').textContent = store.unlocked ? 'Full version unlocked. Thank you!'
+    : `Free version: ${Math.min(store.hops || 0, FREE_HOPS)} of ${FREE_HOPS} free hops used. One child, and one mission with each bonus team.`;
+  loadProduct();
+}
 function renderGrown() {
+  renderFull();
   const tabs = $('#tabs'); tabs.replaceChildren();
   store.players.forEach(p => { const t = el('button', 'tab', `${p.avatar} ${p.name}`); t.setAttribute('aria-pressed', gTab === p.id ? 'true' : 'false'); t.onclick = () => { gTab = p.id; hideConfirm(); renderGrown(); }; tabs.append(t); });
   const add = el('button', 'tab', '+ Add player'); add.setAttribute('aria-pressed', gTab === 'add' ? 'true' : 'false'); add.onclick = () => { gTab = 'add'; hideConfirm(); renderGrown(); }; tabs.append(add);
@@ -2603,6 +2721,7 @@ $('#pName').addEventListener('change', e => { const pl = store.players.find(p =>
 $('#addGo').addEventListener('click', () => {
   const name = $('#addName').value.trim().slice(0, 20);
   if (!name) { $('#addName').focus(); $('#addTrack').textContent = 'Type a name first.'; return; }
+  if (!paid() && store.players.length >= 1) return openPaywall('The free version is for one child. Unlock to add every child in the family, each with their own progress.');
   const p = newPlayer(name, addAge); store.players.push(p); save();
   $('#addName').value = ''; gTab = p.id; renderGrown(); showToast(`${name} added!`);
 });
