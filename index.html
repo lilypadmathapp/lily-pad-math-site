@@ -282,6 +282,17 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--sun);outline-of
 .perks{margin:0;padding-left:1.2em;line-height:1.6}
 #locked .big-frog{width:min(130px,34vw)}
 #locked .big-frog svg{display:block;width:100%}
+.curr{background:var(--bg);border-radius:12px;padding:10px 12px}
+.skillbox{border:2px solid var(--line);border-radius:14px;padding:4px 12px}
+.skillbox summary{cursor:pointer;padding:8px 0;list-style:none;display:flex;align-items:center;gap:8px;font-size:.9rem;color:var(--muted)}
+.skillbox summary::-webkit-details-marker{display:none}
+.skillbox summary::before{content:"▸";font-size:1rem;color:var(--ink);transition:transform .2s}
+.skillbox[open] summary::before{transform:rotate(90deg)}
+.skillbox .sumtitle{font:700 .78rem var(--read);letter-spacing:.08em;text-transform:uppercase;color:var(--ink)}
+.skillbox .skills{padding-bottom:10px}
+.infob{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);background:var(--card);color:var(--muted);font:700 .75rem/1 Georgia,serif;font-style:italic;margin-left:6px;vertical-align:1px;padding:0}
+.infob[aria-expanded="true"]{background:var(--sun);border-color:var(--sun);color:var(--on-sun)}
+.skinfo{grid-column:1 / -1;margin:4px 0 0;font-size:.85rem;line-height:1.5;color:var(--ink);background:var(--card);border-radius:10px;padding:8px 10px}
 #voicePick{font:inherit;font-size:1rem;padding:8px 10px;border-radius:12px;border:2px solid var(--line);background:var(--bg);color:var(--ink);max-width:100%}
 .mgrid{display:grid;grid-template-columns:repeat(var(--k),clamp(70px,17vw,130px));gap:8px}
 .mtile{aspect-ratio:1;background:var(--water-soft);border:3px solid var(--line);border-radius:14px;display:grid;place-items:center;font:800 2.4rem/1 var(--num);color:var(--sun)}
@@ -450,8 +461,11 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--sun);outline-of
         <div class="field"><label for="pName">Name <input type="text" id="pName" maxlength="20" autocomplete="off"></label></div>
         <div class="field"><span>Age</span><div class="ages" id="pAges"></div></div>
         <p id="pTrack"></p>
-        <h3>Skills</h3>
-        <div class="skills" id="skillList"></div>
+        <p id="currNote" class="curr"></p>
+        <details class="skillbox" id="skillBox">
+          <summary><span class="sumtitle">Skills</span> <span id="skillSum"></span></summary>
+          <div class="skills" id="skillList"></div>
+        </details>
         <p id="totals"></p>
         <div id="headRow">
           <h3>Head start</h3>
@@ -480,8 +494,8 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--sun);outline-of
     <h3>Settings</h3>
     <div class="field"><label for="voiceOn"><input type="checkbox" id="voiceOn"> Read questions aloud</label></div>
     <div class="field"><label for="voicePick">Voice <select id="voicePick"></select></label><button class="btn" id="voiceTest" type="button">Hear it</button></div>
-    <p id="voiceHelp">These are the voices the iPad lets web apps use. Samantha usually sounds the most natural.</p>
-    <p>Each skill moves up a level after four first-try right answers out of five, and back down after a run of misses. Missed questions come back a few turns later. Progress is saved on this iPad; deleting the app from the home screen erases it.</p>
+    <p id="voiceHelp">These are the voices this device lets web apps use. Samantha usually sounds the most natural.</p>
+    <p id="howItWorks">Each skill moves up a level after four first-try right answers out of five, and back down after a run of misses. Missed questions come back a few turns later. Progress is saved on this device; deleting the app erases it.</p>
     <div class="btns"><button class="btn primary" id="closeGrown">Done</button><button class="btn" id="privacyBtn">Privacy policy</button></div>
   </div>
 </div>
@@ -546,6 +560,42 @@ const SKILLS = {
   lmore:    { track: 'little', name: 'Which has more?', levels: ['More, easy','More, up to 6'], needs: ['lcount', 2] },
   lpattern: { track: 'little', name: 'Patterns', levels: ['AB AB','AAB and ABB','ABC'], needs: ['lshape', 2] },
 };
+// What each skill is, for grown-ups (shown with the (i) button in the Grown-ups corner).
+const SKILL_INFO = {
+  count: 'Counting objects and saying how many. Objects come in rows, lines, circles and scattered, from zero up to 20.',
+  flash: 'Quick look: recognizing small amounts at a glance without counting one by one, then adding two quick-look groups. Builds number sense and speed.',
+  numeral: 'Recognizing written numbers when they are spoken, from 0 up to 120.',
+  place: 'Place value: 14 is 1 ten and 4 ones, what each digit in a number means, and finding 10 more or 10 less, using tens sticks and ones cubes.',
+  compare: 'Comparing groups and numbers: more, fewer or the same, and using the >, = and < signs with two-digit numbers.',
+  next: 'The counting sequence: what comes after or before a number, counting by 10s, and counting to 120.',
+  add: 'Addition: putting groups together with pictures, then with numbers only, including missing-number problems and sums to 20.',
+  sub: 'Subtraction: taking away with pictures, then with numbers only, up to 20.',
+  frame: 'Ten-frames: how many more make 5 or 10. Knowing the partners of 10 is a key step toward adding and subtracting across ten.',
+  facts: 'Addition and subtraction facts to 20, taught with the make-a-ten strategy (8 + 7 = 8 + 2 + 5).',
+  equal: 'What the equal sign means: deciding whether equations are true or false, turn-around facts (3 + 8 = 8 + 3) and adding three numbers.',
+  story: 'Word problems read aloud: adding to, taking from, comparing, missing parts, unknown starting amounts and two-step stories.',
+  shapes: 'Geometry: naming flat and solid shapes at any size or turn, counting sides and corners, halves and fourths, and what makes a triangle a triangle.',
+  measure: 'Measurement: longer, shorter, taller, heavier, putting three things in order, and measuring length with cubes.',
+  where: 'Position words: above, below, next to, between, inside and outside.',
+  graphs: 'Data: sorting and counting, reading picture graphs, comparing totals and reading tally marks.',
+  clock: 'Telling time to the hour and half hour on a clock with hands.',
+  bpattern: 'Patterns: picture patterns, skip counting by 2s, 5s and 10s, counting down, and finding a missing number in a sequence.',
+  tens: 'Two-digit math: adding and taking away tens, adding ones, crossing a ten, and adding two-digit numbers.',
+  groups: 'Early multiplication and sharing: equal groups, doubles, sharing equally and rows and columns. Stretch work beyond 1st grade.',
+  money: 'Coins: the values of pennies, nickels and dimes, and counting mixed coins. Usually taught in 2nd grade.',
+  grid: 'Visual reasoning: finding the missing piece of a pattern or picture grid by spotting the rule.',
+  teaser: 'Brain teasers: which one does not belong, number riddles and secret-symbol puzzles that build early algebra thinking.',
+  lcount: 'Counting small groups to 3, then 5, then 10, with dots on the answer buttons to help match amounts to numbers.',
+  lshape: 'Naming everyday shapes: circle, square, triangle and more.',
+  lsize: 'Comparing size: big and small, biggest and smallest.',
+  lnum: 'Recognizing the numbers 1 to 10 when they are spoken.',
+  lmatch: 'Matching two groups that have the same amount.',
+  lmore: 'Telling which group has more.',
+  lpattern: 'Finishing simple repeating patterns such as AB, AAB and ABC.',
+};
+// Little-learner skills follow pre-K math goals (Head Start Early Learning Outcomes Framework).
+const LITTLE_STD = { lcount: 'Pre-K: counting', lnum: 'Pre-K: counting', lmatch: 'Pre-K: counting', lmore: 'Pre-K: comparing', lshape: 'Pre-K: geometry', lsize: 'Pre-K: measurement', lpattern: 'Pre-K: patterns' };
+const DEVICE = /iPhone|iPod/.test(navigator.userAgent) ? 'iPhone' : (/iPad/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1)) ? 'iPad' : 'device';
 const TRACK = {
   big:    { label: 'Big kid games (ages 5–6)', pond: 10, rate: .96 },
   little: { label: 'Little learner games (ages 3–4)', pond: 5, rate: .88 },
@@ -635,7 +685,7 @@ const hopSnd = () => { if (!ac) return; const t = ac.currentTime, o = ac.createO
 
 let voice = null;
 // Pick the most natural English voice. In the iOS app this includes downloaded Premium and Enhanced
-// voices; in a browser, iPads only offer the basic ones (usually Samantha is best). Novelty voices are skipped.
+// voices; in a browser, iPhones and iPads only offer the basic ones (usually Samantha is best). Novelty voices are skipped.
 const NOVELTY = /albert|bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|fred|junior|ralph|kathy|grandma|grandpa|rocko|shelley|flo\b|eddy|reed|sandy|eloquence/i;
 let voices = [];
 const voiceId = v => v.voiceURI || v.name;
@@ -2657,6 +2707,8 @@ function openGrown(tab) {
   hush();
   gTab = tab || (P && P.id) || (store.players[0] && store.players[0].id) || 'add';
   $('#voiceOn').checked = store.voice; pickVoice(); renderVoicePick();
+  if (!NATIVE) $('#voiceHelp').textContent = `These are the voices this ${DEVICE} lets web apps use. Samantha usually sounds the most natural.`;
+  $('#howItWorks').textContent = `Each skill moves up a level after four first-try right answers out of five, and back down after a run of misses. Missed questions come back a few turns later. Progress is saved on this ${DEVICE}; deleting the app erases it.`;
   if (NATIVE) $('#voiceHelp').textContent = 'For the most natural voice, download a Premium voice in Settings → Accessibility → Spoken Content → Voices → English (for example Ava or Zoe), then pick it here.';
   hideConfirm(); renderGrown();
   $('#grown').hidden = false;
@@ -2694,18 +2746,28 @@ function renderGrown() {
   ageButtons($('#pAges'), pl.age, a => { pl.age = a; fixPlayer(pl); save(); if (P === pl) buildPond(); renderGrown(); });
   $('#pTrack').textContent = `Plays the ${TRACK[pl.track].label.toLowerCase()}.`;
   $('#headRow').hidden = pl.track !== 'big';
+  $('#currNote').textContent = pl.track === 'big'
+    ? 'Curriculum: these games follow the Common Core State Standards for Mathematics for kindergarten and 1st grade. Each level shows its standard code, for example K.CC.5. Levels marked "Grade 2" are extra stretch work.'
+    : 'Curriculum: these games follow pre-K math goals from the Head Start Early Learning Outcomes Framework: counting, comparing, shapes, size and patterns.';
   const list = $('#skillList'); list.replaceChildren();
+  let nOpen = 0, nDone = 0;
   const unlocked = k => { const n = SKILLS[k].needs; if (!n) return true; const s = pl.skills[n[0]]; return !!s && (s.level >= n[1] || s.mastered); };
   for (const k of skillsFor(pl.track)) {
     const s = pl.skills[k], def = SKILLS[k], open = unlocked(k);
+    if (open) nOpen++; if (s.mastered) nDone++;
     const row = el('div', 'sk'), head = el('div');
     head.append(el('b', '', def.name));
+    const info = el('p', 'skinfo', SKILL_INFO[k] || ''); info.hidden = true;
+    const ib = el('button', 'infob', 'i'); ib.type = 'button'; ib.setAttribute('aria-label', `About ${def.name}`); ib.setAttribute('aria-expanded', 'false');
+    ib.onclick = () => { info.hidden = !info.hidden; ib.setAttribute('aria-expanded', String(!info.hidden)); };
+    head.append(ib);
     head.append(el('span', 'pill ' + (!open ? 'lock' : s.mastered ? 'done' : 'learn'), !open ? 'Locked' : s.mastered ? 'Mastered' : `Level ${s.level} of ${def.levels.length}`));
     if (def.focus && !s.mastered) head.append(el('span', 'pill learn', 'Extra practice'));
     const meta = el('div', 'meta');
     if (!open) meta.textContent = `Opens after ${SKILLS[def.needs[0]].name} reaches level ${def.needs[1]}.`;
     else {
-      meta.textContent = `${def.levels[s.level - 1]}${def.std ? ' (' + def.std[s.level - 1] + ')' : ''} · ${s.seen ? Math.round(100 * s.correct / s.seen) + '% first try over ' + s.seen : 'not tried yet'}`;
+      const std = def.std ? def.std[s.level - 1] : LITTLE_STD[k];
+      meta.textContent = `${def.levels[s.level - 1]}${std ? ' (' + std + ')' : ''} · ${s.seen ? Math.round(100 * s.correct / s.seen) + '% first try over ' + s.seen : 'not tried yet'}`;
       if (s.hist.length) { const d = el('span', 'dots'); d.setAttribute('aria-label', 'Recent answers'); s.hist.forEach(r => d.append(el('i', r ? 'y' : 'n'))); meta.append(d); }
     }
     const adj = el('div', 'adj'), dn = el('button', '', '−'), up = el('button', '', '+');
@@ -2713,8 +2775,9 @@ function renderGrown() {
     dn.disabled = s.level <= 1 && !s.mastered; up.disabled = s.level >= def.levels.length && s.mastered;
     dn.onclick = () => { if (s.mastered) s.mastered = false; else s.level--; s.hist = []; save(); renderGrown(); };
     up.onclick = () => { if (s.level < def.levels.length) s.level++; else s.mastered = true; s.hist = []; save(); renderGrown(); };
-    adj.append(dn, up); row.append(head, adj, meta); list.append(row);
+    adj.append(dn, up); row.append(head, adj, meta, info); list.append(row);
   }
+  $('#skillSum').textContent = `${nOpen} open · ${nDone} mastered`;
   $('#totals').textContent = `${pl.total} questions answered · ${pl.stickers.length} pond${pl.stickers.length === 1 ? '' : 's'} crossed.`;
 }
 $('#pName').addEventListener('change', e => { const pl = store.players.find(p => p.id === gTab); if (!pl) return; pl.name = e.target.value.trim().slice(0, 20) || pl.name; save(); renderGrown(); });

@@ -1,6 +1,6 @@
 // Offline support: the app shell is cached on first visit; fonts are cached as they load.
 // Bump VERSION when the app changes so iPads pick up the new files.
-const VERSION = 'lilypad-v13';
+const VERSION = 'lilypad-v14';
 const SHELL = ['./', 'index.html', 'privacy.html', 'support.html', 'manifest.webmanifest', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png',
   'fonts/andika-latin-400-normal.woff2', 'fonts/andika-latin-700-normal.woff2', 'fonts/baloo-2-latin-600-normal.woff2', 'fonts/baloo-2-latin-800-normal.woff2'];
 
