@@ -1,0 +1,2659 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Lily Pad Math</title>
+<meta name="description" content="A talking kindergarten math game that adjusts to your child as they play.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Lily Pad">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#b9e0dc" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#16384a" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+@font-face{font-family:"Andika";font-weight:400;font-display:swap;src:url(fonts/andika-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Andika";font-weight:700;font-display:swap;src:url(fonts/andika-latin-700-normal.woff2) format("woff2")}
+@font-face{font-family:"Baloo 2";font-weight:600;font-display:swap;src:url(fonts/baloo-2-latin-600-normal.woff2) format("woff2")}
+@font-face{font-family:"Baloo 2";font-weight:800;font-display:swap;src:url(fonts/baloo-2-latin-800-normal.woff2) format("woff2")}
+/* Layout: one-screen pond game. Lily-pad progress strip on top, question in the middle, big answer buttons at the thumb line. */
+:root{
+  --bg:#e6f2ec; --water:#b9e0dc; --water-soft:#d9efea; --pad:#4f9e4c; --pad-done:#86c46f; --rock:#a89a86;
+  --frog:#3d9a3a; --eye:#ffffff; --pupil:#16302a;
+  --card:#ffffff; --line:#c3dcd4; --ink:#17332e; --muted:#567670;
+  --sun:#ffb51f; --on-sun:#3a2600; --berry:#de4f74; --berry-soft:#f8d9e1; --on-pad:#ffffff; --scrim:rgba(18,48,42,.45); --red:#d93636; --blue:#2b6fd6; --sun-deep:#b77c00; --pad-deep:#2f6b2d; --sun-glow:rgba(255,181,31,.55); --sun-tint:rgba(255,181,31,.3);
+  --num:"Baloo 2","Arial Rounded MT Bold","Trebuchet MS",system-ui,sans-serif;
+  --read:"Andika","Comic Sans MS","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1f2b; --water:#16384a; --water-soft:#1c3f50; --pad:#3f8c4a; --pad-done:#5fae5c; --rock:#6c6253;
+  --frog:#6cc56a; --eye:#f4fbf6; --pupil:#0b1a16;
+  --card:#183242; --line:#2b4d5e; --ink:#e7f4ef; --muted:#9dbdb5;
+  --sun:#ffc63d; --on-sun:#2e1f00; --berry:#ff7d9c; --berry-soft:#4a2635; --on-pad:#ffffff; --scrim:rgba(0,0,0,.6); --red:#ff6b6b; --blue:#6aa3ff; --sun-deep:#a57700; --pad-deep:#24572b; --sun-glow:rgba(255,198,61,.5); --sun-tint:rgba(255,198,61,.28);
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1f2b; --water:#16384a; --water-soft:#1c3f50; --pad:#3f8c4a; --pad-done:#5fae5c; --rock:#6c6253;
+  --frog:#6cc56a; --eye:#f4fbf6; --pupil:#0b1a16;
+  --card:#183242; --line:#2b4d5e; --ink:#e7f4ef; --muted:#9dbdb5;
+  --sun:#ffc63d; --on-sun:#2e1f00; --berry:#ff7d9c; --berry-soft:#4a2635; --on-pad:#ffffff; --scrim:rgba(0,0,0,.6); --red:#ff6b6b; --blue:#6aa3ff; --sun-deep:#a57700; --pad-deep:#24572b; --sun-glow:rgba(255,198,61,.5); --sun-tint:rgba(255,198,61,.28);
+  color-scheme:dark}
+
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);background:var(--bg)}
+html,body{height:100%;margin:0}
+body{-webkit-text-size-adjust:100%;overscroll-behavior:none;-webkit-user-select:none;user-select:none}
+button{touch-action:manipulation;-webkit-touch-callout:none}
+input{-webkit-user-select:text;user-select:text}
+img{max-width:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--read);font-size:18px;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:4px solid var(--sun);outline-offset:3px}
+#app{max-width:760px;margin:0 auto;padding-inline:max(16px,env(safe-area-inset-left,0px));padding-block:10px 20px;min-height:100%;display:flex;flex-direction:column;gap:12px;box-sizing:border-box}
+
+/* top bar */
+.bar{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.chip{border:2px solid var(--line);background:var(--card);border-radius:999px;padding:6px 14px;font-size:.8rem;font-weight:700;color:var(--muted);position:relative;overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:none}
+.chip .fill{position:absolute;inset:0;background:var(--sun);transform:scaleX(0);transform-origin:left;opacity:.45}
+.chip.holding .fill{transform:scaleX(1);transition:transform 1.2s linear}
+.chip span.t{position:relative}
+
+/* pond strip */
+.pond{position:relative;display:flex;align-items:center;justify-content:space-between;background:var(--water);border-radius:22px;padding:30px 10px 10px;gap:4px}
+.slot{flex:0 0 auto;width:clamp(20px,6.4vw,46px);aspect-ratio:1;border-radius:50%}
+.slot.rock{background:var(--rock);border-radius:42% 48% 40% 50%}
+.slot.pad{background:conic-gradient(from 20deg,var(--water) 0 26deg,var(--pad) 26deg 360deg)}
+.slot.pad.done{background:conic-gradient(from 20deg,var(--water) 0 26deg,var(--pad-done) 26deg 360deg)}
+.slot.goal{position:relative}
+.slot.goal::after{content:attr(data-goal);position:absolute;inset:0;display:grid;place-items:center;font-size:clamp(.7rem,2.6vw,1.3rem)}
+.frog{position:absolute;bottom:14px;width:clamp(34px,8.5vw,56px);transform:translateX(-50%);transition:left .5s cubic-bezier(.3,.7,.4,1);pointer-events:none}
+.frog svg{display:block;width:100%}
+.frog.hop svg{animation:jump .5s ease-out}
+@keyframes jump{0%{transform:translateY(0) scale(1,1)}15%{transform:translateY(2px) scale(1.1,.85)}50%{transform:translateY(-26px) scale(.95,1.08)}85%{transform:translateY(0) scale(1.08,.9)}100%{transform:none}}
+.fb{fill:var(--frog)} .fe{fill:var(--eye)} .fp{fill:var(--pupil)} .fm{fill:none;stroke:var(--pupil);stroke-width:3;stroke-linecap:round} .fc{fill:var(--berry);opacity:.45}
+
+/* start screen */
+.start{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding-block:10px}
+.start .big-frog{width:min(160px,40vw)}
+.start .big-frog svg{width:100%;display:block;animation:bob 3s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-6px)}}
+.start h1{font:800 clamp(2.4rem,9vw,3.6rem)/1 var(--num);margin:0;text-wrap:balance}
+.start p{margin:0;color:var(--muted);max-width:30ch;text-wrap:balance}
+.go{font:800 1.9rem/1 var(--num);background:var(--sun);color:var(--on-sun);border:0;border-radius:999px;padding:18px 54px;box-shadow:0 7px 0 var(--sun-deep)}
+.go:active{transform:translateY(5px);box-shadow:0 2px 0 var(--sun-deep)}
+.tip{font-size:.85rem}
+.shelf{display:flex;flex-direction:column;align-items:center;gap:6px;max-width:100%}
+.shelf h2{font:700 .8rem var(--read);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0}
+.stickers{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;font-size:2rem;min-height:2.4rem}
+.stickers .empty{font-size:.95rem;color:var(--muted)}
+
+/* play screen */
+.play{flex:1;display:flex;flex-direction:column;gap:14px}
+.prompt{display:flex;align-items:center;gap:12px}
+.ear{flex:0 0 auto;width:52px;height:52px;border-radius:50%;border:0;background:var(--sun);color:var(--on-sun);display:grid;place-items:center}
+.ear svg{width:26px;height:26px}
+.prompt p{margin:0;font-size:clamp(1.25rem,4.6vw,1.6rem);font-weight:700;min-width:0;text-wrap:balance}
+.stage{flex:1;min-height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--card);border:3px solid var(--line);border-radius:26px;padding:16px 10px}
+.answers{display:grid;grid-template-columns:repeat(var(--n,3),1fr);gap:12px}
+.answers.two{grid-template-columns:1fr 1fr}
+.ans{font:800 clamp(2.1rem,9vw,3.3rem)/1 var(--num);padding-block:16px 10px;border-radius:22px;background:var(--card);border:3px solid var(--line);box-shadow:0 6px 0 var(--line);transition:transform .08s}
+.ans:active{transform:translateY(4px);box-shadow:0 2px 0 var(--line)}
+.ans.right{background:var(--pad);border-color:var(--pad);color:var(--on-pad);box-shadow:0 6px 0 var(--pad-deep)}
+.ans.wrong{background:var(--berry-soft);border-color:var(--berry);opacity:.55;animation:shake .4s}
+.ans.hint{animation:glow 1.1s ease-in-out infinite;border-color:var(--sun)}
+@keyframes shake{20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
+@keyframes glow{50%{box-shadow:0 0 0 7px var(--sun-glow),0 6px 0 var(--line)}}
+.card-ans{min-height:150px;display:flex;align-items:center;justify-content:center;padding:12px 6px;font-size:clamp(3rem,14vw,4.6rem)}
+
+/* objects in ten-frame rows */
+.objs{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;max-width:100%}
+.grp{position:relative;display:flex;flex-direction:column;gap:2px;padding:6px 8px;border-radius:16px;background:var(--water-soft)}
+.row{display:flex;gap:2px}
+.obj{position:relative;line-height:1.15;transition:transform .2s;display:inline-block}
+.objs[data-size="l"] .obj{font-size:clamp(2.2rem,9vw,5rem)}
+.objs[data-size="m"] .obj{font-size:clamp(1.8rem,6.8vw,3.8rem)}
+.objs[data-size="s"] .obj{font-size:clamp(1.35rem,5vw,2.8rem)}
+.card-ans .objs .obj{font-size:clamp(1.3rem,5vw,2.8rem)}
+.obj.lit{transform:scale(1.18)}
+.obj[data-n]::after,.fc2[data-n]::after{content:attr(data-n);position:absolute;top:-.35em;right:-.35em;font:800 .42em/1.5 var(--num);background:var(--sun);color:var(--on-sun);border-radius:999px;min-width:1.5em;text-align:center}
+.obj.gone{animation:swim 1s .9s forwards}
+@keyframes swim{to{opacity:.22;filter:grayscale(1);transform:translate(10px,-8px) rotate(-10deg)}}
+.plus{font:800 clamp(2rem,8vw,3rem)/1 var(--num);color:var(--muted);align-self:center}
+.eq{font:800 clamp(2.4rem,11vw,5.5rem)/1 var(--num);letter-spacing:.04em;text-align:center;font-variant-numeric:tabular-nums}
+.eq .q{color:var(--sun)}
+.nl{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.cell{width:clamp(54px,16vw,110px);aspect-ratio:1;display:grid;place-items:center;border-radius:18px;background:var(--water-soft);border:3px solid var(--line);font:800 clamp(1.7rem,6.5vw,2.5rem)/1 var(--num);transition:background .2s}
+.cell.q{border-style:dashed;border-color:var(--sun);color:var(--sun)}
+.cell.lit{background:var(--sun);color:var(--on-sun);border-color:var(--sun)}
+.frame{display:grid;grid-template-columns:repeat(5,clamp(42px,12.5vw,84px));gap:6px;padding:8px;background:var(--water-soft);border:3px solid var(--line);border-radius:16px;max-width:100%;box-sizing:border-box}
+.fc2{position:relative;aspect-ratio:1;border-radius:12px;background:var(--card);display:grid;place-items:center}
+.fc2.on::before{content:"";width:68%;height:68%;border-radius:50%;background:var(--berry)}
+.fc2.lit{outline:4px solid var(--sun);outline-offset:-4px}
+.fc2[data-n]::after{top:-.3em;right:-.3em;font-size:.9rem}
+.listen{font:800 clamp(3.5rem,16vw,5rem)/1 var(--num);color:var(--line)}
+.peek{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:14px;max-width:100%}
+.dice{display:grid;grid-template-columns:repeat(3,clamp(26px,8vw,52px));gap:5px;padding:10px;background:var(--water-soft);border:3px solid var(--line);border-radius:18px}
+.dice i{position:relative;aspect-ratio:1;border-radius:50%}
+.dice i.on{background:var(--berry)}
+.dice i[data-n]::after{content:attr(data-n);position:absolute;top:-.5em;right:-.5em;font:800 .8rem/1.5 var(--num);background:var(--sun);color:var(--on-sun);border-radius:999px;min-width:1.5em;text-align:center}
+.dice i.lit{outline:4px solid var(--sun)}
+.peek .frame{grid-template-columns:repeat(5,clamp(30px,8.5vw,46px))}
+.peek.covered .dice i.on,.peek.covered .fc2.on::before{opacity:0;transition:opacity .25s}
+.timer{height:8px;width:min(280px,80%);border-radius:999px;background:var(--water-soft);overflow:hidden}
+.timer b{display:block;height:100%;background:var(--sun);transform-origin:left;animation:drain linear forwards}
+@keyframes drain{to{transform:scaleX(0)}}
+
+/* overlays */
+.overlay{position:fixed;inset:0;background:var(--scrim);display:grid;place-items:center;padding:16px;z-index:10}
+.panel{background:var(--card);color:var(--ink);border-radius:26px;padding:24px 20px;width:min(560px,100%);max-height:88vh;overflow:auto;box-sizing:border-box;display:flex;flex-direction:column;gap:14px}
+.party{text-align:center;align-items:center}
+.party h2{font:800 clamp(2rem,8vw,2.8rem)/1.05 var(--num);margin:0;text-wrap:balance}
+.party .new{font-size:5.5rem;line-height:1;animation:pop .7s cubic-bezier(.2,1.6,.4,1)}
+@keyframes pop{from{transform:scale(0) rotate(-30deg)}}
+.party p{margin:0;color:var(--muted)}
+.grown h2{font:800 1.6rem/1.1 var(--num);margin:0}
+.grown h3{font:700 .78rem var(--read);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:6px 0 0}
+.grown p{margin:0;font-size:.92rem;color:var(--muted);line-height:1.5}
+.field{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.field label{font-size:.95rem;display:flex;gap:8px;align-items:center}
+.field input[type=text]{font:inherit;font-size:1rem;padding:8px 12px;border-radius:12px;border:2px solid var(--line);background:var(--bg);color:var(--ink);width:12ch}
+.field input[type=checkbox]{width:22px;height:22px;accent-color:var(--pad)}
+.skills{display:flex;flex-direction:column;gap:8px}
+.sk{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;padding:10px 12px;border-radius:14px;background:var(--bg)}
+.sk b{font-size:1rem}
+.sk .meta{grid-column:1;font-size:.85rem;color:var(--muted);min-width:0}
+.sk .adj{grid-column:2;grid-row:1 / span 2;display:flex;gap:4px;align-items:center}
+.sk .adj button{width:34px;height:34px;border-radius:10px;border:2px solid var(--line);background:var(--card);font-weight:700}
+.sk .adj button:disabled{opacity:.35;cursor:default}
+.pill{display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.04em;padding:2px 8px;border-radius:999px;margin-left:6px;vertical-align:2px}
+.pill.lock{background:var(--line);color:var(--muted)}
+.pill.learn{background:var(--sun-tint);color:var(--ink)}
+.pill.done{background:var(--pad);color:var(--on-pad)}
+.dots{display:inline-flex;gap:3px;vertical-align:-1px;margin-left:4px}
+.dots i{width:9px;height:9px;border-radius:50%;background:var(--line)}
+.dots i.y{background:var(--pad)} .dots i.n{background:var(--berry)}
+.btns{display:flex;flex-wrap:wrap;gap:10px}
+.btn{border:2px solid var(--line);background:var(--bg);border-radius:12px;padding:10px 16px;font-weight:700}
+.btn.primary{background:var(--pad);border-color:var(--pad);color:var(--on-pad)}
+.btn.danger{border-color:var(--berry);color:var(--berry)}
+.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 14px);transform:translateX(-50%);background:var(--sun);color:var(--on-sun);font:800 1.15rem/1.2 var(--num);padding:10px 20px;border-radius:999px;z-index:12;box-shadow:0 6px 20px rgba(0,0,0,.18);max-width:calc(100% - 32px);text-align:center;animation:drop .4s ease-out}
+@keyframes drop{from{transform:translate(-50%,-30px);opacity:0}}
+#confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:11}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+/* who's playing */
+.players{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:16px;width:min(640px,100%)}
+.player{display:flex;flex-direction:column;align-items:center;gap:6px;padding:20px 14px 16px;border-radius:26px;background:var(--card);border:3px solid var(--line);box-shadow:0 7px 0 var(--line);transition:transform .08s}
+.player:active{transform:translateY(5px);box-shadow:0 2px 0 var(--line)}
+.player .av{font-size:clamp(3.4rem,10vw,4.6rem);line-height:1}
+.player b{font:800 clamp(1.9rem,6vw,2.4rem)/1 var(--num)}
+.player small{color:var(--muted);font-size:.9rem}
+.who{font:700 clamp(1.3rem,4.5vw,1.7rem)/1.2 var(--read);margin:0}
+
+/* base-ten blocks: hundreds berry, tens green, ones yellow (digits use the same colors) */
+.base{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:center;gap:clamp(6px,1.6vw,12px);--u:clamp(11px,3.1vw,30px);max-width:100%}
+.base.h{--u:clamp(7px,1.9vw,17px)}
+.card-ans .base{--u:clamp(6px,1.6vw,14px);gap:4px}
+.stick{position:relative;display:grid;grid-template-rows:repeat(10,var(--u));width:var(--u);gap:1px;padding:1px;background:var(--pad-deep);border-radius:4px}
+.stick i{background:var(--pad);border-radius:2px}
+.stick.new{animation:pop .5s cubic-bezier(.2,1.6,.4,1)}
+.stick.away{opacity:.2;filter:grayscale(1);transition:opacity .5s}
+.flat{position:relative;display:grid;grid-template-columns:repeat(10,var(--u));grid-template-rows:repeat(10,var(--u));gap:1px;padding:1px;background:var(--berry);border-radius:4px}
+.flat i{background:var(--berry-soft);border-radius:1px}
+.ones{display:grid;grid-template-columns:repeat(2,var(--u));gap:3px;align-content:end}
+.ones i{position:relative;width:var(--u);height:var(--u);background:var(--sun);border-radius:3px;box-shadow:inset 0 0 0 1px var(--sun-deep)}
+.stick.lit,.flat.lit{outline:4px solid var(--sun);outline-offset:2px}
+.ones i.lit{outline:3px solid var(--berry);outline-offset:1px}
+.bn[data-n]::after{content:attr(data-n);position:absolute;top:-1.6em;left:50%;transform:translateX(-50%);font:800 .85rem/1.5 var(--num);background:var(--sun);color:var(--on-sun);border-radius:999px;padding:0 .45em;white-space:nowrap;z-index:1}
+.ones i.bn[data-n]::after{top:auto;bottom:-1.7em}
+.dh{color:var(--berry)} .dt{color:var(--pad)} .do{color:var(--sun-deep)}
+.legend{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;font-size:.85rem;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:.8em;height:.8em;border-radius:2px;margin-right:5px;vertical-align:-1px;background:var(--c)}
+
+/* little learner pieces */
+.shape svg{display:block;width:clamp(70px,17vw,140px);height:auto}
+.sz{line-height:1;display:inline-block}
+.mini{display:flex;justify-content:center;gap:4px;margin-top:8px;flex-wrap:wrap;max-width:5.5em;margin-inline:auto}
+.mini i{width:11px;height:11px;border-radius:50%;background:var(--berry)}
+.pat{display:flex;gap:clamp(4px,1.2vw,10px);flex-wrap:wrap;justify-content:center;align-items:center;font-size:clamp(2.1rem,8vw,4.2rem);line-height:1.1}
+.pat span{display:inline-block;transition:transform .2s}
+.pat span.lit{transform:scale(1.25)}
+.pat .gap{width:1.2em;height:1.2em;border:4px dashed var(--sun);border-radius:16px;display:grid;place-items:center;color:var(--sun);font:800 .7em/1 var(--num)}
+.card-ans .shape svg{width:clamp(60px,14vw,120px)}
+.card-ans.lit{outline:5px solid var(--sun);outline-offset:3px}
+
+/* grown-ups tabs */
+.tabs{display:flex;gap:8px;flex-wrap:wrap}
+.fc2.on.g::before{background:var(--pad)}
+.fc2.x{opacity:.22}
+.srow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:center}
+.srow b{font:800 1.2rem/1 var(--num);min-width:4.5em;text-align:right}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px;width:100%}
+.friend{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 4px 10px;border-radius:18px;background:var(--bg);border:2px solid var(--line)}
+.friend .fe{font-size:2.8rem;line-height:1}
+.friend small{font-size:.74rem;color:var(--muted);text-align:center;line-height:1.2}
+.friend.locked .fe{filter:grayscale(1) brightness(0);opacity:.15}
+.friend.wiggle .fe{animation:pop .5s cubic-bezier(.2,1.6,.4,1)}
+.friend .dup{position:absolute;top:6px;right:8px;font:800 .75rem/1.4 var(--num);background:var(--sun);color:var(--on-sun);border-radius:999px;padding:0 6px}
+#friends .panel{width:min(720px,100%)}
+.frog .hero{display:block;text-align:center;font-size:clamp(1.6rem,6vw,2.6rem);line-height:1}
+.pond.th-sheriffs{--tc:var(--sun-deep)}
+.pond.th-ants{--tc:var(--red)}
+.pond.th-bunnies{--tc:var(--blue)}
+.pond.th .slot.pad{background:var(--card);box-shadow:inset 0 0 0 3px var(--tc)}
+.pond.th .slot.pad.done{background:var(--tc)}
+.mode{border-top:8px solid var(--c,var(--pad))}
+.mode.m-sheriffs{--c:var(--sun)} .mode.m-bunnies{--c:var(--blue)} .mode.m-ants{--c:var(--red)}
+.mode .av{letter-spacing:-.1em}
+.clock svg{display:block;width:clamp(160px,36vw,280px);height:auto}
+.card-ans .clock svg{width:clamp(90px,22vw,160px)}
+.cf{fill:var(--card);stroke:var(--ink);stroke-width:3}
+.cn{font:800 9px var(--num);fill:var(--ink);text-anchor:middle;dominant-baseline:central}
+.hh{stroke:var(--berry);stroke-width:5;stroke-linecap:round}
+.mh{stroke:var(--pad);stroke-width:3;stroke-linecap:round}
+.cc{fill:var(--ink)}
+.coins{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;align-items:center}
+.coin{position:relative;border-radius:50%;display:grid;place-items:center;font:800 clamp(.9rem,2.6vw,1.2rem)/1 var(--num);color:#2b2b2b;box-shadow:inset 0 0 0 3px rgba(0,0,0,.18),0 2px 0 rgba(0,0,0,.2)}
+.coin.c1{width:clamp(48px,11vw,72px);height:clamp(48px,11vw,72px);background:#c98250}
+.coin.c5{width:clamp(56px,12.5vw,82px);height:clamp(56px,12.5vw,82px);background:#b8bdc3}
+.coin.c10{width:clamp(44px,10vw,66px);height:clamp(44px,10vw,66px);background:#dde1e6}
+.coin.lit,.grp.lit,.arow.lit{outline:4px solid var(--sun);outline-offset:2px}
+.arows{display:flex;flex-direction:column;gap:6px;align-items:center}
+.arow{position:relative;display:flex;gap:6px;padding:4px 8px;border-radius:12px;background:var(--water-soft);font-size:clamp(1.6rem,5vw,2.6rem);line-height:1.1}
+.art{display:inline-block}
+.eq .sym{width:1.05em;height:1.05em;vertical-align:-.2em}
+.art svg{display:block;width:100%;height:100%}
+.stage-art{width:clamp(110px,24vw,180px);height:clamp(110px,24vw,180px)}
+.mode .av.arts{display:flex;justify-content:center;letter-spacing:0}
+.mode .arts .art{width:clamp(54px,12vw,80px);height:clamp(54px,12vw,80px);margin:0 -4px}
+.frog .art{display:block;width:100%;aspect-ratio:1}
+.goal-art{position:absolute;inset:4%}
+.reward-art{width:140px;height:140px}
+#gateIn{font:800 2rem/1 var(--num);width:5ch;text-align:center;padding:8px;border-radius:12px;border:3px solid var(--line);background:var(--bg);color:var(--ink);-webkit-user-select:text;user-select:text}
+#privacy{z-index:20}
+.privacy-panel{width:min(760px,100%);height:88vh;max-height:none}
+#privacyFrame{flex:1;width:100%;border:0;border-radius:14px;background:var(--bg)}
+#voicePick{font:inherit;font-size:1rem;padding:8px 10px;border-radius:12px;border:2px solid var(--line);background:var(--bg);color:var(--ink);max-width:100%}
+.mgrid{display:grid;grid-template-columns:repeat(var(--k),clamp(70px,17vw,130px));gap:8px}
+.mtile{aspect-ratio:1;background:var(--water-soft);border:3px solid var(--line);border-radius:14px;display:grid;place-items:center;font:800 2.4rem/1 var(--num);color:var(--sun)}
+.mtile svg,.mpiece svg{width:84%;height:84%}
+.mtile.hole{border-style:dashed;border-color:var(--sun);background:var(--card)}
+.mtile.lit{outline:4px solid var(--sun);outline-offset:1px}
+.mpiece{width:clamp(64px,15vw,110px);aspect-ratio:1;display:grid;place-items:center}
+.wall{width:min(100%,560px)}
+.wall svg{display:block;width:100%;height:auto;border-radius:16px}
+.patch{width:clamp(70px,16vw,120px);aspect-ratio:1;border-radius:12px;overflow:hidden;border:3px solid var(--line)}
+.patch svg{display:block;width:100%;height:100%}
+.bigshape svg{width:clamp(150px,34vw,240px);height:auto}
+.vdot{fill:transparent}
+.vdot.on{fill:var(--sun);stroke:var(--ink);stroke-width:2}
+.solid,.parts,.boxart{width:clamp(70px,16vw,120px);height:clamp(70px,16vw,120px)}
+.pencilart{width:clamp(110px,24vw,200px);aspect-ratio:112/24}
+.towerart{height:clamp(90px,20vw,150px);aspect-ratio:30/102}
+.scaleart{width:min(100%,460px)}
+.scaleart svg{display:block;width:100%;height:auto}
+.measure{--u:clamp(26px,6.2vw,52px);display:flex;flex-direction:column;gap:6px;align-items:flex-start;max-width:100%}
+.pen{height:calc(var(--u) * .55);width:calc(var(--u) * var(--n));background:#f2b51f;border-left:10px solid #f06fa8;clip-path:polygon(0 0,calc(100% - 18px) 0,100% 50%,calc(100% - 18px) 100%,0 100%)}
+.cuberow{display:flex}
+.ucube{position:relative;width:var(--u);height:var(--u);background:var(--sun-tint);border:2px solid var(--sun-deep);box-sizing:border-box}
+.ucube.lit{background:var(--sun)}
+.wgrid{display:grid;grid-template-columns:repeat(3,clamp(60px,15vw,100px));gap:4px}
+.wcell{aspect-ratio:1;display:grid;place-items:center;font-size:clamp(2.2rem,8vw,3.6rem)}
+.fence{position:relative;width:min(100%,500px);aspect-ratio:1.4}
+.fence::before{content:"";position:absolute;inset:26% 24%;border:6px dashed var(--pad-deep);border-radius:18px;background:var(--water-soft)}
+.fan{position:absolute;transform:translate(-50%,-50%);font-size:clamp(2rem,7vw,3.2rem);z-index:1}
+.scatter{position:relative;width:min(100%,480px);aspect-ratio:1.3}
+.scatter .obj{position:absolute;transform:translate(-50%,-50%);font-size:clamp(1.9rem,6.5vw,3rem);line-height:1}
+.scatter .obj.lit{transform:translate(-50%,-50%) scale(1.2)}
+.pgraph{display:flex;flex-direction:column;gap:6px;max-width:100%}
+.prow{display:flex;gap:4px;align-items:center}
+.plabel{font-size:clamp(1.6rem,5vw,2.2rem);width:2.8rem;text-align:center;border-right:3px solid var(--line);margin-right:6px}
+.pcell{position:relative;width:clamp(38px,9vw,66px);height:clamp(38px,9vw,66px);border:2px solid var(--line);border-radius:8px;display:grid;place-items:center;font-size:clamp(1.3rem,4.6vw,2.2rem);background:var(--card)}
+.pcell.lit{outline:3px solid var(--sun)}
+.tally svg{height:clamp(80px,18vw,130px);width:auto;max-width:100%;display:block}
+.tf,.same{font:800 clamp(1.4rem,5vw,2.4rem)/1.1 var(--num)}
+.tab{border:2px solid var(--line);background:var(--bg);border-radius:999px;padding:8px 14px;font-weight:700}
+.tab[aria-pressed="true"]{background:var(--pad);border-color:var(--pad);color:var(--on-pad)}
+.ages{display:flex;gap:8px;flex-wrap:wrap}
+.ages button{min-width:48px;padding:8px 12px;border-radius:12px;border:2px solid var(--line);background:var(--bg);font-weight:700}
+.ages button[aria-pressed="true"]{background:var(--sun);border-color:var(--sun);color:var(--on-sun)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="bar">
+    <button class="chip" id="home" hidden><span class="t">← Players</span></button>
+    <button class="chip" id="friendsBtn" hidden><span class="t">🐢 My friends</span></button>
+    <button class="chip" id="grownBtn" aria-label="Grown-ups: press and hold to open"><span class="fill"></span><span class="t">Grown-ups · hold</span></button>
+  </div>
+
+  <div class="pond" id="pond" aria-label="Pond progress">
+    <div class="frog" id="frog"></div>
+  </div>
+
+  <section class="start" id="start">
+    <div class="big-frog" id="bigFrog"></div>
+    <h1>Lily Pad Math</h1>
+    <p class="who" id="whoAsk">Who's playing?</p>
+    <div class="players" id="players"></div>
+    <p class="tip" id="firstRun">Grown-ups: add each child once. Names stay on this device.</p>
+  </section>
+
+  <section class="start" id="modeView" hidden>
+    <p class="who" id="modeAsk">Pick a game</p>
+    <div class="players modes" id="modes"></div>
+  </section>
+
+  <section class="play" id="playView" hidden>
+    <div class="prompt">
+      <button class="ear" id="replay" aria-label="Hear the question again">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>
+      </button>
+      <p id="ptext"></p>
+    </div>
+    <div class="stage" id="stage"></div>
+    <div class="answers" id="answers"></div>
+  </section>
+</div>
+
+<div class="overlay" id="party" hidden>
+  <div class="panel party">
+    <h2 id="partyTitle">You crossed the pond!</h2>
+    <div class="new" id="newFriend"></div>
+    <p id="partyText">A new friend joined you.</p>
+    <button class="go" id="again">Hop again</button>
+    <button class="btn" id="seeFriends">See all my friends</button>
+  </div>
+</div>
+
+<div class="overlay" id="friends" hidden>
+  <div class="panel party">
+    <h2 id="frTitle">My pond friends</h2>
+    <p id="frCount"></p>
+    <div class="fgrid" id="fgrid"></div>
+    <button class="go" id="frClose">Back to the pond</button>
+  </div>
+</div>
+
+<div class="overlay" id="gate" hidden>
+  <div class="panel grown" role="dialog" aria-labelledby="gateTitle">
+    <h2 id="gateTitle">Grown-ups only</h2>
+    <p id="gateQ"></p>
+    <div class="field"><input type="text" id="gateIn" inputmode="numeric" maxlength="3" autocomplete="off" aria-labelledby="gateQ"></div>
+    <div class="btns"><button class="btn primary" id="gateGo">Continue</button><button class="btn" id="gateNo">Cancel</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="privacy" hidden>
+  <div class="panel grown privacy-panel" role="dialog" aria-label="Privacy policy">
+    <iframe id="privacyFrame" title="Privacy policy"></iframe>
+    <div class="btns"><button class="btn primary" id="privacyClose">Back to Grown-ups corner</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="grown" hidden>
+  <div class="panel grown" role="dialog" aria-labelledby="gTitle">
+    <h2 id="gTitle">Grown-ups corner</h2>
+    <div class="tabs" id="tabs"></div>
+
+    <div id="addPane" hidden>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <h3>Add a player</h3>
+        <div class="field"><label for="addName">Name <input type="text" id="addName" maxlength="20" autocomplete="off"></label></div>
+        <div class="field"><span>Age</span><div class="ages" id="addAges"></div></div>
+        <p id="addTrack"></p>
+        <div class="btns"><button class="btn primary" id="addGo">Add player</button></div>
+      </div>
+    </div>
+
+    <div id="playerPane" hidden>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="field"><label for="pName">Name <input type="text" id="pName" maxlength="20" autocomplete="off"></label></div>
+        <div class="field"><span>Age</span><div class="ages" id="pAges"></div></div>
+        <p id="pTrack"></p>
+        <h3>Skills</h3>
+        <div class="skills" id="skillList"></div>
+        <p id="totals"></p>
+        <div id="headRow">
+          <h3>Head start</h3>
+          <p>For a child who already counts to 20 and knows numbers to 20: skips the easiest levels. Tens and ones always starts at the beginning. The game still steps back down if it is too hard.</p>
+          <div class="btns" style="margin-top:8px"><button class="btn" id="headStart">Give a head start</button></div>
+        </div>
+        <div class="btns" id="playerBtns">
+          <button class="btn danger" id="resetBtn">Start over…</button>
+          <button class="btn danger" id="removeBtn">Remove player…</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="btns" id="confirmRow" hidden>
+      <p style="flex-basis:100%" id="confirmText"></p>
+      <button class="btn danger" id="confirmYes">Yes</button>
+      <button class="btn" id="confirmNo">Cancel</button>
+    </div>
+
+    <h3>Settings</h3>
+    <div class="field"><label for="voiceOn"><input type="checkbox" id="voiceOn"> Read questions aloud</label></div>
+    <div class="field"><label for="voicePick">Voice <select id="voicePick"></select></label><button class="btn" id="voiceTest" type="button">Hear it</button></div>
+    <p id="voiceHelp">These are the voices the iPad lets web apps use. Samantha usually sounds the most natural.</p>
+    <p>Each skill moves up a level after four first-try right answers out of five, and back down after a run of misses. Missed questions come back a few turns later. Progress is saved on this iPad; deleting the app from the home screen erases it.</p>
+    <div class="btns"><button class="btn primary" id="closeGrown">Done</button><button class="btn" id="privacyBtn">Privacy policy</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+<canvas id="confetti" hidden></canvas>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const sum = a => a.reduce((x, y) => x + y, 0);
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+const FROG = '<svg viewBox="0 0 64 56" aria-hidden="true"><ellipse class="fb" cx="32" cy="36" rx="26" ry="18"/><circle class="fb" cx="18" cy="16" r="10"/><circle class="fb" cx="46" cy="16" r="10"/><circle class="fe" cx="18" cy="15" r="6.5"/><circle class="fe" cx="46" cy="15" r="6.5"/><circle class="fp" cx="19.5" cy="16" r="3.2"/><circle class="fp" cx="47.5" cy="16" r="3.2"/><path class="fm" d="M21 37 Q32 47 43 37"/><ellipse class="fc" cx="13" cy="38" rx="4.5" ry="2.8"/><ellipse class="fc" cx="51" cy="38" rx="4.5" ry="2.8"/></svg>';
+$('#frog').innerHTML = FROG; $('#bigFrog').innerHTML = FROG;
+
+const THINGS = [['🍎','apples','apple'],['🐞','ladybugs','ladybug'],['🐟','fish','fish'],['🦆','ducks','duck'],['⭐','stars','star'],['🍓','strawberries','strawberry'],['🐢','turtles','turtle'],['🌼','flowers','flower'],['🐝','bees','bee'],['🦋','butterflies','butterfly'],['🐌','snails','snail'],['🍪','cookies','cookie']];
+const FRIENDS = ['🐢','🦆','🐞','🦋','🐌','🦔','🐝','🦉','🐙','🦀','🐳','🦒','🦁','🐼','🦄','🐧','🦊','🐰','🐨','🦜'];
+const FRIEND_NAMES = { '🐢': 'Toby the Turtle', '🦆': 'Daisy the Duck', '🐞': 'Lulu the Ladybug', '🦋': 'Flutter the Butterfly', '🐌': 'Sid the Snail', '🦔': 'Hazel the Hedgehog', '🐝': 'Buzz the Bee', '🦉': 'Olive the Owl', '🐙': 'Ollie the Octopus', '🦀': 'Clacky the Crab', '🐳': 'Wally the Whale', '🦒': 'Gigi the Giraffe', '🦁': 'Leo the Lion', '🐼': 'Bo the Panda', '🦄': 'Sparkle the Unicorn', '🐧': 'Penny the Penguin', '🦊': 'Finn the Fox', '🐰': 'Rosie the Rabbit', '🐨': 'Koko the Koala', '🦜': 'Polly the Parrot' };
+const AVATARS = ['🐸','🦊','🐻','🐯','🐰','🐼','🦁','🐨','🐶','🐱'];
+const PRAISE = { big: ['Great job!','You got it!','Hop hop hooray!','Super!','That\'s right!','Way to go!','Ribbit! Correct!','Nice thinking!'],
+                 little: ['Yay!','Good job!','You did it!','Hooray!','Ribbit! Yes!','Wow!'] };
+const OOPS = { big: ['Good try! Let\'s figure it out together.','Almost! Let\'s look again.','Hmm, let\'s work it out together.'],
+               little: ['Good try! Let\'s look together.','Oops! Let\'s try again together.'] };
+
+// std: Common Core math standard for each level. "Grade 2" levels are stretch work beyond 1st grade.
+const SKILLS = {
+  // Big kid track (kindergarten and 1st grade)
+  count:   { track: 'big', name: 'Counting', levels: ['Count to 5 (and zero)','Count to 10: rows, lines, circles, scattered','Count 6 to 15','Count to 20'], std: ['K.CC.3, K.CC.5','K.CC.5','K.CC.5','K.CC.5'], needs: null },
+  flash:   { track: 'big', name: 'Quick look', levels: ['Dice dots','Ten-frame dots','Two groups to 10','Two groups to 20'], std: ['K.CC.4','K.CC.4','K.OA.1','1.OA.6'], needs: null },
+  numeral: { track: 'big', name: 'Finding numbers', levels: ['Numbers 0–5','Numbers 0–10','Teen numbers','Numbers to 30','Numbers to 100','Numbers to 120'], std: ['K.CC.3','K.CC.3','K.CC.3','K.CC.1','K.CC.1','1.NBT.1'], needs: null },
+  place:   { track: 'big', name: 'Tens and ones', focus: 2, levels: ['Teens are 1 ten and some ones','Tens and ones to 50','What each digit means','Find the matching blocks','Hundreds, tens and ones','10 more, 10 less'], std: ['K.NBT.1','1.NBT.2','1.NBT.2','1.NBT.2','Grade 2: 2.NBT.1','1.NBT.5'], needs: ['numeral', 2] },
+  compare: { track: 'big', name: 'More, fewer, same', levels: ['More or same, groups to 5','More or same, groups to 10','Bigger number to 10','Bigger or smaller to 20','Compare with >, = and <'], std: ['K.CC.6','K.CC.6','K.CC.7','K.CC.7','1.NBT.3'], needs: ['count', 2] },
+  next:    { track: 'big', name: 'What comes next', levels: ['After, to 10','After, to 20','Before, to 20','After, to 50','Count by 10s','Count to 120'], std: ['K.CC.4','K.CC.2','K.CC.2','K.CC.2','K.CC.1','1.NBT.1'], needs: ['numeral', 2] },
+  add:     { track: 'big', name: 'Adding', levels: ['Picture sums to 5','Picture sums to 10','Number sums to 10','Missing number','Sums to 20'], std: ['K.OA.1','K.OA.2','K.OA.5','1.OA.8','1.OA.6'], needs: ['count', 2] },
+  sub:     { track: 'big', name: 'Taking away', levels: ['Picture take-away from 5','Picture take-away from 10','Number take-away from 10','Take-away from 20'], std: ['K.OA.1','K.OA.2','K.OA.5','1.OA.6'], needs: ['add', 2] },
+  frame:   { track: 'big', name: 'Making 5 and 10', levels: ['Make 5','Make 10','Make 10, no pictures'], std: ['K.OA.3','K.OA.4','K.OA.4'], needs: ['add', 2] },
+  facts:   { track: 'big', name: 'Math facts', levels: ['Facts to 10','Cross ten: 8 + 7','Blanks: ? + 3 = 12','Take away across ten','Mixed facts to 20'], std: ['K.OA.5','1.OA.6','1.OA.8','1.OA.4, 1.OA.6','1.OA.6'], needs: ['add', 2] },
+  equal:   { track: 'big', name: 'Equal sign', levels: ['True or false?','Are both sides equal?','Turn-around facts','Add three numbers'], std: ['1.OA.7','1.OA.7','1.OA.3','1.OA.2, 1.OA.3'], needs: ['add', 3] },
+  story:   { track: 'big', name: 'Story problems', levels: ['Join and take away to 10','Compare and missing part','Stories to 20','Tricky stories'], std: ['K.OA.2','K.OA.2','1.OA.1','1.OA.1, 1.OA.2'], needs: ['add', 2] },
+  shapes:  { track: 'big', name: 'Shapes', levels: ['Name flat shapes','Solid shapes, flat or solid','Sides and corners','Halves and fourths','What makes a triangle or rectangle'], std: ['K.G.2','K.G.2, K.G.3','K.G.4','1.G.3','1.G.1'], needs: null },
+  measure: { track: 'big', name: 'Measuring', levels: ['Longer, shorter, taller','Heavier or lighter','Longest and shortest of three','Measure with cubes'], std: ['K.MD.1, K.MD.2','K.MD.2','1.MD.1','1.MD.2'], needs: ['count', 2] },
+  where:   { track: 'big', name: 'Where is it?', levels: ['Above and below','Next to','Between','Inside and outside'], std: ['K.G.1','K.G.1','K.G.1','K.G.1'], needs: null },
+  graphs:  { track: 'big', name: 'Sorting and graphs', levels: ['Sort and count','Read a picture graph','Tally marks','Compare and total on a graph'], std: ['K.MD.3','1.MD.4','1.MD.4','1.MD.4'], needs: ['count', 2] },
+  clock:   { track: 'big', name: 'Telling time', levels: ["O'clock",'Half past','Which clock shows it?','One hour later'], std: ['1.MD.3','1.MD.3','1.MD.3','1.MD.3'], needs: ['numeral', 3] },
+  bpattern:{ track: 'big', name: 'Patterns', levels: ['Picture patterns','Count by 2s, 5s, 10s','Counting down','Missing middle','Tricky number patterns'], std: ['Reasoning','K.CC.1; 2s and 5s: Grade 2','1.OA.5','Grade 2: 2.NBT.2','Reasoning'], needs: ['numeral', 2] },
+  tens:    { track: 'big', name: 'Bigger numbers', levels: ['Add tens: 30 + 20','Add ones: 34 + 5','Take away tens: 70 − 30','Cross a ten: 27 + 8','Two-digit plus two-digit'], std: ['1.NBT.4','1.NBT.4','1.NBT.6','1.NBT.4; take-away: Grade 2','Grade 2: 2.NBT.5'], needs: ['place', 3] },
+  groups:  { track: 'big', name: 'Equal groups', levels: ['Groups you can see','Doubles and near doubles','Share equally','Rows and columns'], std: ['Grade 2: 2.OA.3','1.OA.6','Grade 3: 3.OA.2','Grade 2: 2.OA.4'], needs: ['facts', 3] },
+  money:   { track: 'big', name: 'Coins', levels: ['Pennies','Nickels and pennies','Dimes and pennies','Dimes, nickels and pennies'], std: ['Grade 2: 2.MD.8','Grade 2: 2.MD.8','Grade 2: 2.MD.8','Grade 2: 2.MD.8'], needs: ['place', 4] },
+  grid:    { track: 'big', name: 'Missing piece', levels: ['Fill the hole: stripes and dots','2 by 2 picture grid','3 by 3: shape and color','Fill the hole: tricky patterns','Counting across','One of each shape','Turning arrows'], std: ['Reasoning','Reasoning','Reasoning','Reasoning','Reasoning','Reasoning','Reasoning'], needs: ['bpattern', 2] },
+  teaser:  { track: 'big', name: 'Brain teasers', levels: ['Which one does not belong?','Number riddles','Secret symbol','Two secret symbols'], std: ['K.MD.3','1.OA.8','1.OA.8','1.OA.8 (stretch)'], needs: ['count', 2] },
+  // Little learner track (ages 3–4, preschool)
+  lcount:   { track: 'little', name: 'Counting', levels: ['Count to 3','Count to 5','Count to 10'], needs: null },
+  lshape:   { track: 'little', name: 'Shapes', levels: ['Circle, square, triangle','Add star and heart','More shapes'], needs: null },
+  lsize:    { track: 'little', name: 'Big and small', levels: ['Which is big?','Big or small?','Biggest and smallest'], needs: null },
+  lnum:     { track: 'little', name: 'Numbers', levels: ['Numbers 1–3','Numbers 1–5','Numbers 1–10'], needs: ['lcount', 2] },
+  lmatch:   { track: 'little', name: 'Same amount', levels: ['Match 1 to 3','Match 1 to 5'], needs: ['lcount', 2] },
+  lmore:    { track: 'little', name: 'Which has more?', levels: ['More, easy','More, up to 6'], needs: ['lcount', 2] },
+  lpattern: { track: 'little', name: 'Patterns', levels: ['AB AB','AAB and ABB','ABC'], needs: ['lshape', 2] },
+};
+const TRACK = {
+  big:    { label: 'Big kid games (ages 5–6)', pond: 10, rate: .96 },
+  little: { label: 'Little learner games (ages 3–4)', pond: 5, rate: .88 },
+};
+const trackFor = age => age <= 4 ? 'little' : 'big';
+const skillsFor = tr => Object.keys(SKILLS).filter(k => SKILLS[k].track === tr);
+// "Head start" levels for a kindergartner who already counts and names numbers to 20 (big track only).
+const START = { count: 3, flash: 2, numeral: 3, compare: 3, next: 2, add: 2, sub: 1, frame: 1, place: 1 };
+
+/* ---------- running inside the iOS app (Capacitor) ---------- */
+const CAP = window.Capacitor, NATIVE = !!(CAP && CAP.isNativePlatform && CAP.isNativePlatform());
+const nativePlugin = name => NATIVE ? ((CAP.Plugins && CAP.Plugins[name]) || (CAP.registerPlugin && CAP.registerPlugin(name)) || null) : null;
+const TTS = nativePlugin('TextToSpeech'), PREFS = nativePlugin('Preferences');
+
+/* ---------- players + storage ---------- */
+const KEY = 'lilypad-math-v2', OLD_KEY = 'lilypad-math-v1';
+const blankSkill = () => ({ level: 1, hist: [], seen: 0, correct: 0, mastered: false });
+function newPlayer(name, age) {
+  const used = new Set(store.players.map(p => p.avatar));
+  return fixPlayer({ id: 'p' + Date.now().toString(36) + rnd(100, 999), name, age, avatar: AVATARS.find(a => !used.has(a)) || pick(AVATARS),
+    skills: {}, review: [], total: 0, pad: 0, stickers: [] });
+}
+function fixPlayer(p) {
+  p.age = +p.age || 5; p.track = trackFor(p.age);
+  p.skills = p.skills || {};
+  for (const k of skillsFor(p.track)) {
+    const s = p.skills[k] = Object.assign(blankSkill(), p.skills[k]);
+    s.level = Math.min(Math.max(1, s.level), SKILLS[k].levels.length);
+    if (s.mastered && s.level < SKILLS[k].levels.length) s.mastered = false;   // a new top level was added
+  }
+  if (!Array.isArray(p.review)) p.review = [];
+  if (!Array.isArray(p.stickers)) p.stickers = [];
+  if (!p.badges || typeof p.badges !== 'object') p.badges = {};
+  for (const [o, n] of [['rangers', 'sheriffs'], ['paw', 'bunnies'], ['spidey', 'ants']]) {
+    if (p.badges[o]) { p.badges[n] = (p.badges[n] || 0) + p.badges[o]; delete p.badges[o]; }
+    if (p['pad_' + o] != null) { p['pad_' + n] = p['pad_' + o]; delete p['pad_' + o]; }
+  }
+  p.review = p.review.filter(r => SKILLS[r.skill] && SKILLS[r.skill].track === p.track);
+  p.total = p.total || 0;
+  p.pad = Math.min(p.pad || 0, TRACK[p.track].pond - 1);
+  return p;
+}
+let store = { v: 2, voice: true, players: [], current: null };
+try {
+  const s = JSON.parse(localStorage.getItem(KEY));
+  if (s && Array.isArray(s.players)) store = Object.assign(store, s);
+  else {
+    const o = JSON.parse(localStorage.getItem(OLD_KEY));   // carry over progress from the one-player version
+    if (o && (o.total > 0 || o.name)) {
+      store.voice = o.voice !== false;
+      store.players.push({ id: 'p1', name: o.name || 'Player 1', age: 5, avatar: '🐸', skills: o.skills, review: o.review, total: o.total, pad: o.pad, stickers: o.stickers });
+    }
+  }
+} catch (e) {}
+store.players = store.players.map(fixPlayer);
+let P = null;   // the player who is playing right now
+// Saved in the web view's storage, and in the app's own storage when running as the iOS app.
+function save() {
+  const json = JSON.stringify(store);
+  try { localStorage.setItem(KEY, json); } catch (e) {}
+  if (PREFS) PREFS.set({ key: KEY, value: json }).catch(() => {});
+}
+if (PREFS) PREFS.get({ key: KEY }).then(r => {
+  const answered = x => (x.players || []).reduce((a, p) => a + (p.total || 0), 0);
+  if (!r || !r.value) { if (store.players.length) save(); return; }
+  const saved = JSON.parse(r.value);
+  if (Array.isArray(saved.players) && answered(saved) > answered(store)) {
+    store = Object.assign(store, saved); store.players = store.players.map(fixPlayer);
+    try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) {}
+    if (!$('#start').hidden) renderPicker();
+  }
+}).catch(() => {});
+const trk = () => (P ? P.track : 'big');
+
+/* ---------- sound + speech ---------- */
+let ac = null;
+function tone(f, dur, type = 'sine', when = 0, vol = .18) {
+  if (!ac) return;
+  const t = ac.currentTime + when, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .02); g.gain.exponentialRampToValueAtTime(.001, t + dur);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + .05);
+}
+const chime = () => { tone(523, .25, 'triangle'); tone(659, .25, 'triangle', .1); tone(784, .4, 'triangle', .2); };
+const boop = () => { tone(220, .25, 'sine', 0, .14); tone(196, .3, 'sine', .12, .12); };
+const hopSnd = () => { if (!ac) return; const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain(); o.frequency.setValueAtTime(300, t); o.frequency.exponentialRampToValueAtTime(900, t + .18); g.gain.setValueAtTime(.12, t); g.gain.exponentialRampToValueAtTime(.001, t + .25); o.connect(g).connect(ac.destination); o.start(t); o.stop(t + .3); };
+
+let voice = null;
+// Pick the most natural English voice. In the iOS app this includes downloaded Premium and Enhanced
+// voices; in a browser, iPads only offer the basic ones (usually Samantha is best). Novelty voices are skipped.
+const NOVELTY = /albert|bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|fred|junior|ralph|kathy|grandma|grandpa|rocko|shelley|flo\b|eddy|reed|sandy|eloquence/i;
+let voices = [];
+const voiceId = v => v.voiceURI || v.name;
+const voiceInfo = v => v.name + ' ' + (v.voiceURI || '');
+function voiceScore(v) {
+  let s = 0; const t = voiceInfo(v);
+  if (/premium/i.test(t)) s += 100; else if (/enhanced|neural|natural/i.test(t)) s += 60;
+  if (/samantha/i.test(v.name)) s += 40;
+  else if (/ava|zoe|evan|nathan|allison|susan|nicky|joelle|noelle|aria|jenny|google us english/i.test(v.name)) s += 30;
+  else if (/karen|daniel|moira|tessa|serena|kate/i.test(v.name)) s += 20;
+  if (/en[-_]US/i.test(v.lang)) s += 10;
+  if (v.localService) s += 2;
+  return s;
+}
+async function pickVoice() {
+  try {
+    const list = TTS ? ((await TTS.getSupportedVoices()).voices || []).map((v, idx) => Object.assign({}, v, { idx })) : speechSynthesis.getVoices();
+    voices = list.filter(v => /^en/i.test(v.lang) && !NOVELTY.test(v.name)).sort((a, b) => voiceScore(b) - voiceScore(a));
+    voice = (store.voiceName && voices.find(v => voiceId(v) === store.voiceName)) || voices[0] || null;
+    if (!$('#grown').hidden) renderVoicePick();
+  } catch (e) {}
+}
+if (TTS) pickVoice(); else try { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; } catch (e) {}
+const canSpeak = () => store.voice && (!!TTS || 'speechSynthesis' in window);
+function say(text, minMs = 0) {
+  return new Promise(resolve => {
+    let done = false; const fin = () => { if (!done) { done = true; resolve(); } };
+    const fallback = Math.max(minMs, canSpeak() ? 900 + text.length * 80 : 350 + text.length * 30);
+    const start = Date.now(), ended = () => { const left = minMs - (Date.now() - start); left > 0 ? setTimeout(fin, left) : fin(); };
+    if (canSpeak()) {
+      try {
+        if (TTS) {
+          const opts = { text, lang: voice ? voice.lang : 'en-US', rate: TRACK[trk()].rate, pitch: 1.02, volume: 1, category: 'playback' };
+          if (voice) opts.voice = voice.idx;
+          TTS.speak(opts).then(ended, fin);
+        } else {
+          const u = new SpeechSynthesisUtterance(text);
+          u.rate = TRACK[trk()].rate; u.pitch = 1.02; if (voice) { u.voice = voice; u.lang = voice.lang; }
+          u.onend = ended; u.onerror = fin;
+          speechSynthesis.speak(u);
+        }
+      } catch (e) {}
+    }
+    setTimeout(fin, fallback);
+  });
+}
+function hush() { try { if (TTS) TTS.stop().catch(() => {}); else speechSynthesis.cancel(); } catch (e) {} }
+function sayNow(t) { hush(); return say(t); }
+
+async function countThrough(nodes, start = 1) {
+  for (let i = 0; i < nodes.length; i++) {
+    const n = nodes[i];
+    n.classList.add('lit'); n.dataset.n = start + i;
+    tone(440 + (i % 10) * 40, .12, 'sine', 0, .06);
+    await say(String(start + i), 520);
+  }
+}
+
+/* ---------- visuals ---------- */
+function objs(n, e, gone = 0) {
+  const wrap = el('div', 'objs'); let made = 0;
+  for (let g = 0; g < Math.ceil(n / 10); g++) {
+    const grp = el('div', 'grp');
+    for (let r = 0; r < 2; r++) {
+      const row = el('div', 'row');
+      for (let c = 0; c < 5 && made < n; c++) {
+        const s = el('span', 'obj', e);
+        if (made >= n - gone) s.classList.add('gone');
+        row.append(s); made++;
+      }
+      if (row.children.length) grp.append(row);
+    }
+    wrap.append(grp);
+  }
+  wrap.dataset.size = n <= 5 ? 'l' : n <= 10 ? 'm' : 's';
+  return wrap;
+}
+function eq(parts) { const d = el('div', 'eq'); parts.forEach(p => { if (p && p.svg) { d.append(artEl(p.svg, 'sym'), ' '); return; } const s = el('span', p === '?' ? 'q' : '', String(p)); d.append(s, ' '); }); return d; }
+function stack(...kids) { const d = el('div'); d.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:14px;max-width:100%'; d.append(...kids.filter(Boolean)); return d; }
+function frameEl(size, on) {
+  const f = el('div', 'frame');
+  for (let i = 0; i < size; i++) { const c = el('div', 'fc2'); if (i < on) c.classList.add('on'); f.append(c); }
+  return f;
+}
+// One or two ten-frames: a dots in pink, then b in green (the "make a ten" picture).
+function twoFrames(a, b) {
+  const wrap = el('div', 'peek'), f1 = frameEl(10, 0), f2 = frameEl(10, 0);
+  wrap.append(f1); if (a + b > 10) wrap.append(f2);
+  const cells = [...f1.children, ...f2.children];
+  for (let i = 0; i < a + b; i++) { cells[i].classList.add('on'); if (i >= a) cells[i].classList.add('g'); }
+  return { el: wrap, cells };
+}
+// Analog clock: short pink hour hand, long green minute hand.
+function clockEl(h, m) {
+  const d = el('div', 'clock'), ha = ((h % 12) + m / 60) * Math.PI / 6, ma = m * Math.PI / 30;
+  let nums = '';
+  for (let i = 1; i <= 12; i++) { const a = i * Math.PI / 6; nums += `<text x="${(50 + 37 * Math.sin(a)).toFixed(1)}" y="${(50 - 37 * Math.cos(a)).toFixed(1)}" class="cn">${i}</text>`; }
+  d.innerHTML = `<svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="47" class="cf"/>${nums}<line x1="50" y1="50" x2="${(50 + 22 * Math.sin(ha)).toFixed(1)}" y2="${(50 - 22 * Math.cos(ha)).toFixed(1)}" class="hh"/><line x1="50" y1="50" x2="${(50 + 33 * Math.sin(ma)).toFixed(1)}" y2="${(50 - 33 * Math.cos(ma)).toFixed(1)}" class="mh"/><circle cx="50" cy="50" r="3.5" class="cc"/></svg>`;
+  return d;
+}
+/* ---------- missing-piece puzzles (pattern with a hole, picture grids) ---------- */
+const MCOL = [['#d93636', 'red'], ['#2b6fd6', 'blue'], ['#f2b51f', 'yellow'], ['#2fa84f', 'green'], ['#8a4fd6', 'purple']];
+const ARROW = '<polygon points="50,6 88,46 63,46 63,94 37,94 37,46 12,46"/>';
+const DIRS = { 0: 'up', 90: 'right', 180: 'down', 270: 'left' };
+function tileSVG(t) {
+  const pos = { 1: [[50, 50]], 2: [[27, 50], [73, 50]], 3: [[27, 29], [73, 29], [50, 73]] }[t.n || 1], k = (t.n || 1) === 1 ? .66 : .42;
+  const shape = t.s === 'arrow' ? ARROW : SHAPES[t.s][0];
+  const g = pos.map(([x, y]) => `<g transform="translate(${x} ${y}) rotate(${t.r || 0}) scale(${k}) translate(-50 -50)">${shape}</g>`).join('');
+  return `<svg viewBox="0 0 100 100" aria-hidden="true"><g fill="${MCOL[t.c][0]}">${g}</g></svg>`;
+}
+function tileWords(t) {
+  if (t.s === 'arrow') return `a ${MCOL[t.c][1]} arrow pointing ${DIRS[t.r]}`;
+  const n = t.n || 1;
+  return `${['', 'one', 'two', 'three'][n]} ${MCOL[t.c][1]} ${t.s}${n > 1 ? 's' : ''}`;
+}
+function mutate(ans, attrs, shapes, cols) {
+  const out = [], key = x => JSON.stringify(x);
+  for (let g = 0; out.length < 3 && g < 200; g++) {
+    const a = pick(attrs), m = Object.assign({}, ans);
+    if (a === 's') m.s = pick(shapes.filter(x => x !== ans.s));
+    if (a === 'c') m.c = pick(cols.filter(x => x !== ans.c));
+    if (a === 'n') m.n = pick([1, 2, 3].filter(x => x !== ans.n));
+    if (a === 'r') m.r = pick([0, 90, 180, 270].filter(x => x !== ans.r));
+    if (key(m) !== key(ans) && !out.some(o => key(o) === key(m))) out.push(m);
+  }
+  return out;
+}
+function makeMatrix(L) {
+  const shapes = shuffle(['circle', 'square', 'triangle', 'star', 'heart', 'diamond']).slice(0, 3), cols = shuffle([0, 1, 2, 3, 4]).slice(0, 3);
+  let k = 3, cell, rule, attrs;
+  if (L === 2 || L === 3) { k = L === 2 ? 2 : 3; cell = (r, c) => ({ s: shapes[r], c: cols[c], n: 1 }); rule = 'Each row has the same shape. Each column has the same color.'; attrs = ['s', 'c']; }
+  else if (L === 5) { cell = (r, c) => ({ s: shapes[r], c: cols[r], n: c + 1 }); rule = 'Each row has the same shape and color. Going across, there is one more each time.'; attrs = ['n', 's', 'c']; }
+  else if (L === 6) { cell = (r, c) => ({ s: shapes[(r + c) % 3], c: cols[c], n: 1 }); rule = 'Every row has one of each shape. Each column has the same color.'; attrs = ['s', 'c']; }
+  else { const base = 90 * rnd(0, 3); cell = (r, c) => ({ s: 'arrow', c: cols[r], n: 1, r: (base + 90 * r + 90 * c) % 360 }); rule = 'The arrow turns a quarter turn, like a clock hand, each time. Each row has its own color.'; attrs = ['r', 'c']; }
+  const cells = []; for (let r = 0; r < k; r++) for (let c = 0; c < k; c++) cells.push(cell(r, c));
+  const hole = L === 2 ? 3 : rnd(0, k * k - 1), ans = cells[hole];
+  const opts = shuffle([ans, ...mutate(ans, attrs, shapes, cols)]);
+  return { k, cells, hole, opts, ans: opts.indexOf(ans), rule };
+}
+let patN = 0;
+// A repeating wallpaper pattern seen through the viewBox vb; dx/dy shift it, rot turns it.
+function wallSVG(sp, vb, o = {}) {
+  const id = 'wp' + (++patN), P = sp.P * (o.scale || 1), a = sp.a, b = o.b || sp.b, c = sp.c;
+  const inner = {
+    hs: `<rect width="${P}" height="${P}" fill="${a}"/><rect width="${P}" height="${P / 2}" fill="${b}"/>`,
+    vs: `<rect width="${P}" height="${P}" fill="${a}"/><rect width="${P / 2}" height="${P}" fill="${b}"/>`,
+    diag: `<rect width="${P}" height="${P}" fill="${a}"/><rect width="${P / 2}" height="${P}" fill="${b}"/>`,
+    dots: `<rect width="${P}" height="${P}" fill="${a}"/><circle cx="${P / 2}" cy="${P / 2}" r="${P * (o.big ? .36 : .22)}" fill="${b}"/>`,
+    check: `<rect width="${P}" height="${P}" fill="${a}"/><rect width="${P / 2}" height="${P / 2}" fill="${b}"/><rect x="${P / 2}" y="${P / 2}" width="${P / 2}" height="${P / 2}" fill="${b}"/>`,
+    tri: `<rect width="${P}" height="${P}" fill="${a}"/><rect x="${P / 3}" width="${P / 3}" height="${P}" fill="${b}"/><rect x="${2 * P / 3}" width="${P / 3}" height="${P}" fill="${c}"/>`,
+  }[sp.type];
+  const tf = sp.type === 'diag' ? ' patternTransform="rotate(45)"' : '';
+  const x = vb.x + (o.dx || 0), y = vb.y + (o.dy || 0), cx = x + vb.w / 2, cy = y + vb.h / 2;
+  return `<svg viewBox="${x} ${y} ${vb.w} ${vb.h}" aria-hidden="true"><defs><pattern id="${id}" patternUnits="userSpaceOnUse" width="${P}" height="${P}"${tf}>${inner}</pattern></defs>`
+    + `<g transform="rotate(${o.rot || 0} ${cx} ${cy})"><rect x="${x - vb.w * 2}" y="${y - vb.h * 2}" width="${vb.w * 5}" height="${vb.h * 5}" fill="url(#${id})"/></g>${o.hole || ''}</svg>`;
+}
+function wallpaperQ(tierW, p) {
+  if (!p) {
+    const strong = shuffle(MCOL.map(x => x[0])), light = pick(['#fff4d6', '#e3f1ff', '#fde3ea', '#e6f7e3']);
+    const type = tierW === 1 ? pick(['hs', 'vs', 'dots']) : pick(['check', 'diag', 'tri', 'dots']);
+    const sp = { type, a: light, b: strong[0], c: strong[1], P: type === 'tri' ? 45 : 30 };
+    const hx = 15 * rnd(2, 13), hy = 15 * rnd(1, 6);
+    const half = type === 'tri' ? 15 : 15, shifts = type === 'hs' ? { dy: half } : { dx: half };
+    const cand = {
+      hs: [{ rot: 90 }, { b: strong[2] }, { scale: 1.6 }],
+      vs: [{ rot: 90 }, { b: strong[2] }, { scale: 1.6 }],
+      dots: tierW === 1 ? [{ big: true }, { b: strong[2] }, { scale: 1.6 }] : [shifts, { big: true }, { b: strong[2] }],
+      check: [shifts, { b: strong[2] }, { scale: 1.6 }],
+      diag: [{ rot: 90 }, shifts, { b: strong[2] }],
+      tri: [shifts, { rot: 90 }, { b: strong[3] || strong[2] }],
+    }[type];
+    const opts = shuffle([{}, ...cand]);
+    p = { w: tierW, sp, hx, hy, opts, ans: opts.findIndex(o => Object.keys(o).length === 0) };
+  }
+  const S = 60, vb = { x: p.hx, y: p.hy, w: S, h: S };
+  const hole = `<rect x="${p.hx}" y="${p.hy}" width="${S}" height="${S}" rx="6" style="fill:var(--card);stroke:var(--sun);stroke-width:4;stroke-dasharray:8 6"/><text x="${p.hx + S / 2}" y="${p.hy + S / 2}" style="fill:var(--sun);font:800 34px var(--num)" text-anchor="middle" dominant-baseline="central">?</text>`;
+  const big = el('div', 'wall'); big.innerHTML = wallSVG(p.sp, { x: 0, y: 0, w: 300, h: 180 }, { hole });
+  const cards = p.opts.map(o => { const d = el('div', 'patch'); d.innerHTML = wallSVG(p.sp, vb, o); return d; });
+  return { p, kind: 'cards', cards, say: 'Which piece fills the hole?', text: 'Which piece fills the hole?', stage: big, answer: String(p.ans),
+    teach: 'The piece keeps the pattern going.',
+    help: async () => {
+      await say('Look at the pattern all around the hole. The missing piece has to keep the lines, colors and dots going, the same size and the same way.');
+      if (p.w === 2) await say('Check where the pattern lines up at the edges of the hole.');
+    } };
+}
+
+// ----- drawing helpers for geometry, measurement and data -----
+function seededRand(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function seededShuffle(a, seed) { const r = seededRand(seed), b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; }
+// Objects scattered at random (K.CC.5: count up to 10 scattered objects).
+function scatterBox(list, seed) {
+  const r = seededRand(seed + 7), box = el('div', 'scatter'), cells = seededShuffle([...Array(12).keys()], seed);
+  list.forEach((e, i) => { const c = cells[i], x = ((c % 4) + .5) / 4 * 100 + (r() - .5) * 10, y = (Math.floor(c / 4) + .5) / 3 * 100 + (r() - .5) * 12; const s = el('span', 'obj', e); s.style.left = x + '%'; s.style.top = y + '%'; box.append(s); });
+  return box;
+}
+// Counting layouts: rows (ten-frame style), a single line, a circle, or scattered.
+function layoutObjs(n, e, lay, seed) {
+  if (lay === 'scatter') return scatterBox(Array(n).fill(e), seed);
+  if (lay === 'circle') {
+    const box = el('div', 'scatter');
+    for (let i = 0; i < n; i++) { const a = i / n * 2 * Math.PI - Math.PI / 2, s = el('span', 'obj', e); s.style.left = (50 + 36 * Math.cos(a)) + '%'; s.style.top = (50 + 38 * Math.sin(a)) + '%'; box.append(s); }
+    return box;
+  }
+  if (lay === 'line') { const w = el('div', 'objs'), g = el('div', 'grp'), r = el('div', 'row'); for (let i = 0; i < n; i++) r.append(el('span', 'obj', e)); g.append(r); w.append(g); w.dataset.size = n <= 5 ? 'l' : 'm'; return w; }
+  return objs(n, e);
+}
+const VERTS = { triangle: [[50, 8], [94, 90], [6, 90]], square: [[10, 10], [90, 10], [90, 90], [10, 90]], rectangle: [[4, 24], [96, 24], [96, 76], [4, 76]], hexagon: [[27, 8], [73, 8], [96, 50], [73, 92], [27, 92], [4, 50]], pentagon: [[50, 6], [94, 38], [77, 92], [23, 92], [6, 38]] };
+function flatEl(name, color, rot = 0, sc = 1) {
+  const d = el('div', 'shape');
+  d.innerHTML = `<svg viewBox="0 0 100 100" aria-hidden="true"><g style="fill:${color}" transform="rotate(${rot} 50 50) translate(50 50) scale(${sc}) translate(-50 -50)">${SHAPES[name][0]}</g></svg>`;
+  return d;
+}
+function solidSVG(s, c) {
+  const dark = 'rgba(0,0,0,.2)', light = 'rgba(255,255,255,.4)';
+  const body = {
+    sphere: `<circle cx="50" cy="50" r="40" fill="${c}"/><path d="M50 10 A40 40 0 0 1 50 90 A26 40 0 0 0 50 10Z" fill="${dark}"/><ellipse cx="36" cy="34" rx="10" ry="7" fill="${light}"/>`,
+    cube: `<rect x="14" y="36" width="50" height="50" fill="${c}"/><polygon points="14,36 36,16 86,16 64,36" fill="${c}"/><polygon points="14,36 36,16 86,16 64,36" fill="${light}"/><polygon points="64,36 86,16 86,66 64,86" fill="${c}"/><polygon points="64,36 86,16 86,66 64,86" fill="${dark}"/>`,
+    cylinder: `<rect x="22" y="22" width="56" height="58" fill="${c}"/><ellipse cx="50" cy="80" rx="28" ry="9" fill="${c}"/><path d="M58 22 H78 V80 A28 9 0 0 1 58 88.6Z" fill="${dark}"/><ellipse cx="50" cy="22" rx="28" ry="9" fill="${c}"/><ellipse cx="50" cy="22" rx="28" ry="9" fill="${light}"/>`,
+    cone: `<polygon points="50,8 21,80 79,80" fill="${c}"/><ellipse cx="50" cy="80" rx="29" ry="9" fill="${c}"/><path d="M50 8 L79 80 A29 9 0 0 1 58 88.7Z" fill="${dark}"/>`,
+  }[s];
+  return `<svg viewBox="0 0 100 100" aria-hidden="true">${body}</svg>`;
+}
+// A pizza (circle) or sandwich (rectangle) cut into parts, equal or not (1.G.3).
+function partsSVG(base, kind) {
+  const L = base === 'circle'
+    ? { half: 'M50 6 V94', unequal2: 'M28 12 V88', fourth: 'M50 6 V94 M6 50 H94', third: 'M50 50 L50 6 M50 50 L88.1 72 M50 50 L11.9 72', unequal4: 'M50 6 V94 M6 30 H50 M50 70 H94' }
+    : { half: 'M50 22 V78', unequal2: 'M30 22 V78', fourth: 'M50 22 V78 M8 50 H92', third: 'M36 22 V78 M64 22 V78', unequal4: 'M25 22 V78 M45 22 V78 M75 22 V78' };
+  const shape = base === 'circle' ? '<circle cx="50" cy="50" r="44" fill="#f2c46b" stroke="#c98a2b" stroke-width="5"/>' : '<rect x="8" y="22" width="84" height="56" rx="6" fill="#f3dca2" stroke="#b98a3b" stroke-width="5"/>';
+  return `<svg viewBox="0 0 100 100" aria-hidden="true">${shape}<path d="${L[kind]}" stroke="#6b3d10" stroke-width="3.5" fill="none" stroke-linecap="round"/></svg>`;
+}
+// Real and look-alike triangles and rectangles (1.G.1: defining attributes).
+function attrShape(shape, kind) {
+  const P = pts => pts.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`);
+  if (shape === 'triangle') {
+    let a, b, c, area;
+    do { a = [rnd(15, 85), rnd(8, 30)]; b = [rnd(60, 92), rnd(68, 92)]; c = [rnd(8, 40), rnd(58, 92)]; area = Math.abs((b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1])) / 2; } while (area < 1200);
+    const [pa, pb, pc] = P([a, b, c]);
+    if (kind === 'good') return { d: `M${pa} L${pb} L${pc} Z`, closed: true, good: true };
+    if (kind === 'open') { const g = [c[0] + (a[0] - c[0]) * .6, c[1] + (a[1] - c[1]) * .6]; return { d: `M${pa} L${pb} L${pc} L${P([g])[0]}`, closed: false, good: false }; }
+    if (kind === 'curve') { const m = [(b[0] + c[0]) / 2, (b[1] + c[1]) / 2], cen = [(a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3], k = [m[0] + (m[0] - cen[0]) * 1.4, m[1] + (m[1] - cen[1]) * 1.4]; return { d: `M${pa} L${pb} Q${P([k])[0]} ${pc} Z`, closed: true, good: false }; }
+    return { d: 'M14 22 L82 12 L90 84 L22 90 Z', closed: true, good: false };
+  }
+  let w, h; do { w = rnd(40, 84); h = rnd(26, 62); } while (Math.abs(w - h) < 10);
+  const rot = pick([0, 0, 20, 90]) * Math.PI / 180, rp = ([x, y]) => [50 + x * Math.cos(rot) - y * Math.sin(rot), 50 + x * Math.sin(rot) + y * Math.cos(rot)];
+  const cs = [[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2]].map(rp), [c1, c2, c3, c4] = P(cs);
+  if (kind === 'good') return { d: `M${c1} L${c2} L${c3} L${c4} Z`, closed: true, good: true };
+  if (kind === 'open') return { d: `M${c1} L${c2} L${c3} L${c4}`, closed: false, good: false };
+  if (kind === 'curve') { const m = [(cs[2][0] + cs[3][0]) / 2, (cs[2][1] + cs[3][1]) / 2], k = [m[0] + (m[0] - 50) * 1.2, m[1] + (m[1] - 50) * 1.2]; return { d: `M${c1} L${c2} L${c3} Q${P([k])[0]} ${c4} Z`, closed: true, good: false }; }
+  return { d: 'M24 26 L92 26 L76 74 L8 74 Z', closed: true, good: false };
+}
+function pencilSVG(n, c) {
+  const len = 12 + n * 10;
+  return `<svg viewBox="0 0 112 24" aria-hidden="true"><rect x="2" y="6" width="${len - 12}" height="12" fill="${c}"/><rect x="2" y="6" width="6" height="12" fill="#f06fa8"/><polygon points="${len - 10},6 ${len},12 ${len - 10},18" fill="#f1d3a5"/><polygon points="${len - 3},10.5 ${len},12 ${len - 3},13.5" fill="#333"/></svg>`;
+}
+function towerSVG(n, c) {
+  let r = ''; for (let i = 0; i < n; i++) r += `<rect x="5" y="${91 - 11 * i}" width="20" height="10" rx="1.5" fill="${c}"/>`;
+  return `<svg viewBox="0 0 30 102" aria-hidden="true">${r}</svg>`;
+}
+function scaleSVG(heavy, cols) {
+  const ang = heavy === 0 ? -12 : 12;
+  return `<svg viewBox="0 0 200 130" aria-hidden="true"><polygon points="100,70 82,126 118,126" fill="#8a8f98"/><g transform="rotate(${ang} 100 70)"><rect x="18" y="66" width="164" height="8" rx="4" fill="#5c626b"/>`
+    + `<rect x="28" y="34" width="36" height="32" rx="5" fill="${cols[0]}"/><rect x="136" y="34" width="36" height="32" rx="5" fill="${cols[1]}"/></g><circle cx="100" cy="70" r="6" fill="#3a3f46"/></svg>`;
+}
+function tallySVG(n) {
+  const f = Math.floor(n / 5), o = n % 5; let s = '', x = 6;
+  for (let g = 0; g < f; g++) { for (let i = 0; i < 4; i++) s += `<line x1="${x + i * 9}" y1="10" x2="${x + i * 9}" y2="62"/>`; s += `<line x1="${x - 5}" y1="54" x2="${x + 32}" y2="18"/>`; x += 48; }
+  for (let i = 0; i < o; i++) s += `<line x1="${x + i * 9}" y1="10" x2="${x + i * 9}" y2="62"/>`;
+  const w = x + o * 9 + 6;
+  return `<svg viewBox="0 0 ${w} 72" aria-hidden="true"><g style="stroke:var(--ink)" stroke-width="4.5" stroke-linecap="round">${s}</g></svg>`;
+}
+
+function choicesFor(ans, n, lo, hi, extra = []) {
+  const out = [ans];
+  const cands = [...shuffle(extra.slice()), ...shuffle([ans - 1, ans + 1, ans - 2, ans + 2]), ...shuffle([ans - 3, ans + 3, ans + 4, ans - 4])];
+  for (const c of cands) { if (out.length >= n) break; if (c >= lo && c <= hi && !out.includes(c)) out.push(c); }
+  for (let c = lo; out.length < n && c <= hi + 10; c++) if (!out.includes(c)) out.push(c);
+  return out.sort((a, b) => a - b);
+}
+// Base-ten blocks. Returns the element plus each piece with its value, in counting order.
+function baseEl(h, t, o) {
+  const b = el('div', 'base' + (h ? ' h' : '')), parts = [];
+  for (let i = 0; i < h; i++) { const f = el('div', 'flat bn'); for (let j = 0; j < 100; j++) f.append(el('i')); b.append(f); parts.push({ el: f, v: 100 }); }
+  for (let i = 0; i < t; i++) { const r = el('div', 'stick bn'); for (let j = 0; j < 10; j++) r.append(el('i')); b.append(r); parts.push({ el: r, v: 10 }); }
+  if (o) { const os = el('div', 'ones'); for (let i = 0; i < o; i++) { const c = el('i', 'bn'); os.append(c); parts.push({ el: c, v: 1 }); } b.append(os); }
+  return { el: b, parts };
+}
+async function countParts(parts, start = 0) {
+  let total = start;
+  for (const p of parts) {
+    total += p.v; p.el.classList.add('lit'); p.el.dataset.n = total;
+    tone(p.v === 1 ? 660 : p.v === 10 ? 520 : 390, .14, 'sine', 0, .07);
+    await say(String(total), 560);
+  }
+}
+// A number with its digits colored by place: hundreds berry, tens green, ones yellow.
+function digits(n) {
+  const d = el('div', 'eq'), s = String(n), cls = s.length === 3 ? ['dh', 'dt', 'do'] : s.length === 2 ? ['dt', 'do'] : ['do'];
+  [...s].forEach((c, i) => d.append(el('span', cls[i], c)));
+  return d;
+}
+function legend(h) {
+  const l = el('div', 'legend');
+  const add = (t, c) => { const s = el('span', '', t); s.style.setProperty('--c', c); l.append(s); };
+  if (h) add('hundred = 100', 'var(--berry)');
+  add('ten = 10', 'var(--pad)'); add('one = 1', 'var(--sun)');
+  return l;
+}
+const SHAPES = {
+  circle: ['<circle cx="50" cy="50" r="42"/>', 'A circle is round, like a ball.'],
+  square: ['<rect x="10" y="10" width="80" height="80" rx="6"/>', 'A square has four sides that are all the same.'],
+  triangle: ['<polygon points="50,8 94,90 6,90"/>', 'A triangle has three sides and three points.'],
+  star: ['<polygon points="50,6 61,38 95,38 67,58 78,92 50,72 22,92 33,58 5,38 39,38"/>', 'A star has five points.'],
+  heart: ['<path d="M50 88 C20 66 6 50 6 32 C6 16 18 8 30 8 C40 8 47 14 50 22 C53 14 60 8 70 8 C82 8 94 16 94 32 C94 50 80 66 50 88Z"/>', 'A heart, like on a valentine.'],
+  rectangle: ['<rect x="4" y="24" width="92" height="52" rx="5"/>', 'A rectangle is long, like a door lying down.'],
+  oval: ['<ellipse cx="50" cy="50" rx="45" ry="30"/>', 'An oval is like an egg.'],
+  diamond: ['<polygon points="50,4 90,50 50,96 10,50"/>', 'A diamond is like a kite.'],
+  hexagon: ['<polygon points="27,8 73,8 96,50 73,92 27,92 4,50"/>', 'A hexagon has six sides, like a honeycomb.'],
+  pentagon: ['<polygon points="50,6 94,38 77,92 23,92 6,38"/>', 'A pentagon has five sides, like a house shape.'],
+};
+const SHAPE_COLORS = ['var(--berry)', 'var(--sun)', 'var(--pad)', 'var(--sun-deep)'];
+function shapeEl(name, color) { const d = el('div', 'shape'); d.innerHTML = `<svg viewBox="0 0 100 100" style="fill:${color}" aria-hidden="true">${SHAPES[name][0]}</svg>`; return d; }
+const PAT = [['🍎','apple'],['🍌','banana'],['⭐','star'],['🐸','frog'],['🌼','flower'],['🚗','car'],['🐟','fish'],['🍓','strawberry']];
+
+/* ---------- question generators ---------- */
+const GEN = {
+  /* ===== big kid track ===== */
+  count(L, p) {
+    const R = [[0, 5], [1, 10], [6, 15], [10, 20]][L - 1];
+    if (!p) {
+      let n = rnd(...R); if (n === 0 && Math.random() < .6) n = rnd(1, 5);
+      p = { n, t: rnd(0, THINGS.length - 1), lay: n <= 10 && L >= 2 && Math.random() < .5 ? pick(['scatter', 'line', 'circle']) : 'rows', seed: rnd(1, 9999) };
+    }
+    const [e, pl, sg] = THINGS[p.t], st = layoutObjs(p.n, e, p.lay || 'rows', p.seed || 1), zero = p.n === 0;
+    return { p, say: `How many ${pl}?`, text: `How many ${pl}?`, stage: zero ? stack(el('div', 'listen', '🧺'), st) : st, answer: p.n,
+      choices: choicesFor(p.n, L === 1 ? 3 : 4, 0, R[1] + 2),
+      teach: zero ? 'Zero means none at all.' : (p.lay === 'scatter' ? 'When things are scattered, keep track of which ones you already counted.' : null),
+      help: async () => {
+        if (zero) { await say(`There are no ${pl} at all. That is zero!`); return; }
+        await countThrough(st.querySelectorAll('.obj')); await say(`There ${p.n === 1 ? 'is' : 'are'} ${p.n} ${p.n === 1 ? sg : pl}!`);
+      } };
+  },
+  flash(L, p) {
+    // Quick look: dots show for a moment, then hide. Builds "see it, know it" without counting one by one.
+    if (!p) {
+      if (L === 1) p = { a: rnd(1, 6), b: 0 };
+      else if (L === 2) p = { a: rnd(2, 10), b: 0 };
+      else if (L === 3) { const a = rnd(1, 6); p = { a, b: rnd(1, Math.min(6, 10 - a)) }; }
+      else p = { a: rnd(5, 10), b: rnd(3, 10) };
+    }
+    const { a, b } = p, total = a + b;
+    const DICE = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+    const dice = n => { const d = el('div', 'dice'); for (let i = 0; i < 9; i++) d.append(el('i', DICE[n].includes(i) ? 'on' : '')); return d; };
+    const grp = n => (L === 1 || L === 3) ? dice(n) : frameEl(10, n);
+    const peek = el('div', 'peek'), parts = [grp(a)];
+    if (b) parts.push(el('span', 'plus', '+'), grp(b));
+    peek.append(...parts);
+    const ms = [1800, 2200, 2600, 3000][L - 1];
+    const bar = el('div', 'timer'), fill = el('b'); fill.style.animationDuration = ms + 'ms'; bar.append(fill);
+    const st = stack(peek, bar);
+    const t = b ? 'How many dots in all? Look fast!' : 'How many dots? Look fast!';
+    const dots = () => [...peek.querySelectorAll('.dice i.on, .fc2.on')];
+    return { p, say: t, text: t, stage: st, answer: total,
+      choices: choicesFor(total, L === 1 ? 3 : 4, 1, 22),
+      onShow: () => setTimeout(() => { if (!peek.dataset.open) peek.classList.add('covered'); }, ms),
+      help: async () => {
+        peek.dataset.open = '1'; peek.classList.remove('covered'); bar.hidden = true;
+        if (b && L === 4) { await say(`${a}, then count on.`); await countThrough(dots().slice(a), a + 1); }
+        else await countThrough(dots());
+        await say(b ? `${a} and ${b} make ${total}!` : `${total} dots!`);
+      } };
+  },
+  numeral(L, p) {
+    const R = [[0, 5], [0, 10], [10, 20], [10, 30], [20, 99], [60, 120]][L - 1];
+    p = p || { n: rnd(...R) };
+    const n = p.n, extra = [];
+    if (n >= 10) { const rev = (n % 10) * 10 + Math.floor(n / 10); if (n < 100 && rev !== n && n % 10) extra.push(rev); extra.push(n + 10, n - 10); }
+    const st = stack(el('div', 'listen', '?'));
+    return { p, say: `Find the number ${n}.`, text: 'Tap the number you hear.', stage: st, answer: n,
+      choices: choicesFor(n, L === 1 ? 3 : 4, 0, 130, extra),
+      help: async () => {
+        if (n === 0) { await say('Zero means none at all. It looks like a circle.'); await say('Find 0.'); return; }
+        if (n >= 100) { const t = Math.floor(n / 10) - 10, o = n % 10, b = baseEl(1, t, o); st.replaceChildren(digits(n), b.el); await say(`${n} is one hundred${n > 100 ? ' and ' + (n - 100) : ''}. It starts with 1, 0 for one hundred.`); await say(`Find ${n}.`); return; }
+        if (n >= 20) {
+          const t = Math.floor(n / 10), o = n % 10, b = baseEl(0, t, o);
+          st.replaceChildren(digits(n), b.el);
+          await say(`${n} is ${t} tens${o ? ' and ' + o + ' ones' : ''}. It starts with ${t}.`);
+          await say(`Find ${n}.`);
+          return;
+        }
+        const dots = objs(n, '🔵'); st.replaceChildren(dots);
+        if (n > 10) await say(`${n} is ten and ${n - 10} more.`);
+        else if (n === 10) await say('Ten is a full frame.');
+        else await countThrough(dots.querySelectorAll('.obj'));
+        await say(`Find ${n}.`);
+      } };
+  },
+  place(L, p) {
+    if (L === 1) {
+      p = p || { o: rnd(1, 9) };
+      const o = p.o, n = 10 + o, b = baseEl(0, 1, o);
+      return { p, say: 'How many blocks? A tall stick is ten.', text: 'How many blocks?', stage: stack(b.el, legend()), answer: n,
+        choices: choicesFor(n, 4, 1, 99, [o, o * 10 + 1, n + 10]),
+        teach: `1 ten and ${o} ${o === 1 ? 'one' : 'ones'} make ${n}.`,
+        help: async () => { await say('The tall stick is ten. Then count on.'); await countParts(b.parts); await say(`1 ten and ${o} ones make ${n}.`); } };
+    }
+    if (L === 2) {
+      p = p || { t: rnd(2, 5), o: rnd(0, 9) };
+      const { t, o } = p, n = 10 * t + o, b = baseEl(0, t, o);
+      const extra = [t + o, n + 10, n - 10]; if (o) extra.unshift(10 * o + t);
+      return { p, say: 'How many blocks? Count the tens first. Ten, twenty...', text: 'How many blocks?', stage: stack(b.el, legend()), answer: n,
+        choices: choicesFor(n, 4, 1, 99, extra),
+        teach: `${t} tens and ${o} ones make ${n}.`,
+        help: async () => { await say('Count the tens by tens. Then count the ones.'); await countParts(b.parts); await say(`${t} tens and ${o} ones make ${n}.`); } };
+    }
+    if (L === 3) {
+      if (!p) { let t, o; do { t = rnd(1, 9); o = rnd(0, 9); } while (t === o); p = { t, o, ask: Math.random() < .5 ? 't' : 'o' }; }
+      const { t, o } = p, n = 10 * t + o, tens = p.ask === 't', ans = tens ? t : o;
+      const st = stack(digits(n));
+      const q = `How many ${tens ? 'tens' : 'ones'} are in ${n}?`;
+      return { p, say: q, text: q, stage: st, answer: ans,
+        choices: choicesFor(ans, 4, 0, 9, [tens ? o : t]),
+        teach: `In ${n}, the ${t} means ${t} tens, that's ${t * 10}. The ${o} means ${o} ones.`,
+        help: async () => {
+          const b = baseEl(0, t, o); st.append(b.el, legend());
+          await say(`${n} is ${t} tens and ${o} ones. The first number tells the tens.`);
+          await countParts(b.parts);
+          await say(`So there ${ans === 1 ? 'is' : 'are'} ${ans} ${tens ? (ans === 1 ? 'ten' : 'tens') : (ans === 1 ? 'one' : 'ones')}.`);
+        } };
+    }
+    if (L === 4) {
+      if (!p) {
+        let t, o; do { t = rnd(1, 6); o = rnd(1, 9); } while (t === o);
+        const near = Math.random() < .5 ? [t, o === 9 ? 8 : o + 1] : [t === 1 ? 2 : t - 1, o];
+        p = { t, o, opts: shuffle([[t, o], [o, t], near]) };
+      }
+      const { t, o } = p, n = 10 * t + o;
+      const cards = p.opts.map(([a, b]) => baseEl(0, a, b).el);
+      const answer = String(p.opts.findIndex(([a, b]) => a === t && b === o));
+      return { p, kind: 'cards', cards, say: `Which blocks show ${n}?`, text: `Which blocks show ${n}?`, stage: stack(digits(n), legend()), answer,
+        teach: `${n} is ${t} tens and ${o} ones.`,
+        help: async () => { await say(`${n} is ${t} tens and ${o} ones. Look for ${t} tall ${t === 1 ? 'stick' : 'sticks'} and ${o} little ${o === 1 ? 'cube' : 'cubes'}.`); } };
+    }
+    if (L === 5) {
+      p = p || { h: rnd(1, 3), t: rnd(0, 9), o: rnd(0, 9) };
+      const { h, t, o } = p, n = 100 * h + 10 * t + o, b = baseEl(h, t, o);
+      const opts = [n];
+      for (const c of shuffle([100 * h + 10 * o + t, 100 * t + 10 * h + o, n + 100, n + 10, n - 10, n + 1]))
+        if (opts.length < 4 && c > 0 && c < 1000 && !opts.includes(c)) opts.push(c);
+      return { p, say: 'How many blocks? A big square is one hundred.', text: 'How many blocks?', stage: stack(b.el, legend(true)), answer: n,
+        choices: opts.sort((x, y) => x - y),
+        teach: `${h} ${h === 1 ? 'hundred' : 'hundreds'}, ${t} tens and ${o} ones make ${n}.`,
+        help: async () => { await say('Count hundreds first, then tens, then ones.'); await countParts(b.parts); await say(`${n}!`); } };
+    }
+    // L6: ten more / ten less
+    p = p || { n: rnd(12, 88), more: Math.random() < .5 };
+    const { n, more } = p, t = Math.floor(n / 10), o = n % 10, ans = more ? n + 10 : n - 10, b = baseEl(0, t, o);
+    const st = stack(digits(n), b.el);
+    const q = `What is 10 ${more ? 'more' : 'less'} than ${n}?`;
+    return { p, say: q, text: q, stage: st, answer: ans,
+      choices: choicesFor(ans, 4, 0, 99, [more ? n + 1 : n - 1, ans + 1, ans - 1]),
+      teach: `10 ${more ? 'more' : 'less'} only changes the tens. ${n}, ${ans}.`,
+      help: async () => {
+        if (more) {
+          const r = el('div', 'stick bn new'); for (let j = 0; j < 10; j++) r.append(el('i'));
+          const ones = b.el.querySelector('.ones'); ones ? b.el.insertBefore(r, ones) : b.el.append(r);
+          await say('Add one more ten stick.');
+        } else {
+          const bars = b.el.querySelectorAll('.stick'); bars[bars.length - 1].classList.add('away');
+          await say('Take away one ten stick.');
+        }
+        st.replaceChildren(digits(ans), b.el);
+        await say(`The tens go ${more ? 'up' : 'down'} by one. ${ans}!`);
+      } };
+  },
+  compare(L, p) {
+    if (L === 5) {
+      if (!p) { const a = rnd(10, 99); let b = Math.random() < .15 ? a : rnd(10, 99); p = { a, b }; }
+      const { a, b } = p, sign = a > b ? '>' : a < b ? '<' : '=', SIGNS = ['<', '=', '>'];
+      const word = { '>': 'is greater than', '<': 'is less than', '=': 'is equal to' }[sign];
+      return { p, kind: 'cards', cards: SIGNS.map(x => el('span', 'tf', x)), say: `Which sign makes it true? ${a}, blank, ${b}.`, text: 'Which sign goes in the box?', stage: stack(eq([a, '?', b])), answer: String(SIGNS.indexOf(sign)),
+        teach: `${a} ${word} ${b}.`,
+        help: async () => {
+          const ta = Math.floor(a / 10), tb = Math.floor(b / 10);
+          await say(ta !== tb ? `Compare the tens first. ${a} has ${ta} tens and ${b} has ${tb} tens.` : a === b ? 'Both numbers are exactly the same.' : 'The tens are the same, so compare the ones.');
+          await say(`${a} ${word} ${b}.${sign !== '=' ? ' The open side of the sign faces the bigger number.' : ''}`);
+        } };
+    }
+    if (!p) {
+      const same = L <= 2 && Math.random() < .2;
+      let a, b, hi = L === 1 ? 5 : L === 4 ? 20 : 10;
+      do { a = rnd(1, hi); b = same ? a : rnd(1, hi); } while (!same && (a === b || (L === 1 && Math.abs(a - b) < 2)));
+      p = { a, b, t: rnd(0, THINGS.length - 1), less: L === 4 && Math.random() < .45 };
+    }
+    const { a, b } = p, [e, pl] = THINGS[p.t], pics = L <= 2;
+    const answer = pics && a === b ? '2' : (p.less ? a < b : a > b) ? '0' : '1';
+    const mk = n => pics ? objs(n, e) : el('span', '', String(n));
+    const cards = [mk(a), mk(b)];
+    if (pics) cards.push(el('span', 'same', 'Same'));
+    const q = pics ? `Which side has more ${pl}? Or are they the same?` : p.less ? 'Which number is smaller?' : 'Which number is bigger?';
+    return { p, kind: 'cards', cards, say: q, text: pics ? 'Which side has more? Or the same?' : q, stage: stack(el('div', 'listen', pics ? '⚖️' : '?')), answer,
+      help: async () => {
+        const big = Math.max(a, b), small = Math.min(a, b);
+        if (pics) {
+          await countThrough(cards[0].querySelectorAll('.obj'));
+          await countThrough(cards[1].querySelectorAll('.obj'));
+          await say(a === b ? `Both sides have ${a}. They are the same!` : `${big} is more than ${small}.`);
+        } else await say(`When we count, ${big} comes after ${small}. So ${big} is bigger, and ${small} is smaller.`);
+      } };
+  },
+  next(L, p) {
+    const before = L === 3, byTen = L === 5, step = byTen ? 10 : 1;
+    const R = [[1, 9], [1, 19], [2, 20], [10, 49], null, [90, 119]][L - 1];
+    p = p || { n: byTen ? 10 * rnd(2, 9) : rnd(...R) };
+    const n = p.n, ans = before ? n - 1 : n + step;
+    const nl = el('div', 'nl'), shown = [];
+    if (before) { nl.append(el('div', 'cell q', '?')); for (let i = n; i <= n + 2; i++) { const c = el('div', 'cell', String(i)); shown.push(c); nl.append(c); } }
+    else { for (let i = Math.max(0, n - 2 * step); i <= n; i += step) { const c = el('div', 'cell', String(i)); shown.push(c); nl.append(c); } nl.append(el('div', 'cell q', '?')); }
+    const t = byTen ? `Count by tens. What comes after ${n}?` : before ? `What comes before ${n}?` : `What comes after ${n}?`;
+    return { p, say: t, text: t, stage: nl, answer: ans,
+      choices: choicesFor(ans, L === 1 ? 3 : 4, 0, 130, byTen ? [n + 1, n + 20, n - 10] : L >= 4 ? [ans + 10, ans - 10] : []),
+      teach: byTen ? `${ans} is ${ans / 10} tens.` : null,
+      help: async () => {
+        if (before) {
+          await say(`Let's count backwards.`);
+          for (let i = shown.length - 1; i >= 0; i--) { shown[i].classList.add('lit'); await say(shown[i].textContent, 450); }
+          await say(`Then ${ans}! ${ans} comes before ${n}.`);
+        } else {
+          for (const c of shown) { c.classList.add('lit'); await say(c.textContent, 450); }
+          await say(`Then ${ans}! ${ans} comes after ${n}.`);
+        }
+      } };
+  },
+  add(L, p) {
+    if (!p) {
+      const hi = L === 1 ? 5 : 10; let a, b;
+      if (L === 5) { do { a = rnd(5, 12); b = rnd(2, 9); } while (a + b <= 10 || a + b > 20); }
+      else do { a = rnd(1, hi - 1); b = rnd(1, hi - 1); } while (a + b > hi);
+      p = { a, b, t: rnd(0, THINGS.length - 1) };
+    }
+    const { a, b } = p, [e, pl, sg] = THINGS[p.t];
+    if (L === 5) {
+      const c = a + b, st = stack(eq([a, '+', b, '=', '?']));
+      return { p, say: `What is ${a} plus ${b}?`, text: `What is ${a} + ${b}?`, stage: st, answer: c,
+        choices: choicesFor(c, 4, 1, 22, [c + 10, c - 10]),
+        help: async () => {
+          const more = objs(b, '🟢'); st.append(more);
+          await say(`Start at ${a}, and count on ${b} more.`);
+          await countThrough([...more.querySelectorAll('.obj')], a + 1);
+          await say(`${a} plus ${b} is ${c}!`);
+        } };
+    }
+    if (L === 4) {
+      const c = a + b, ghosts = el('div', 'objs');
+      const st = stack(eq([a, '+', '?', '=', c]));
+      return { p, say: `${a} plus what makes ${c}?`, text: `${a} + ? = ${c}`, stage: st, answer: b,
+        choices: choicesFor(b, 4, 0, 10),
+        help: async () => {
+          const have = objs(a, '🔵'), need = objs(b, '⚪'); ghosts.append(have, need); st.append(ghosts);
+          await say(`We have ${a}. Let's count up to ${c}.`);
+          await countThrough(need.querySelectorAll('.obj'), a + 1);
+          await say(`We counted ${b} more. ${a} plus ${b} makes ${c}.`);
+        } };
+    }
+    const total = a + b, pics = el('div', 'objs');
+    pics.append(objs(a, e), el('span', 'plus', '+'), objs(b, e));
+    const st = stack(L <= 2 ? pics : null, eq([a, '+', b, '=', '?']));
+    const t = L <= 2 ? `${a} ${a === 1 ? sg : pl} and ${b} more. How many in all?` : `What is ${a} plus ${b}?`;
+    return { p, say: t, text: L <= 2 ? 'How many in all?' : `What is ${a} + ${b}?`, stage: st, answer: total,
+      choices: choicesFor(total, L === 1 ? 3 : 4, 1, 12),
+      help: async () => {
+        if (L > 2) st.prepend(pics);
+        await countThrough([...pics.querySelectorAll('.obj')]);
+        await say(`${a} plus ${b} is ${total}!`);
+      } };
+  },
+  sub(L, p) {
+    if (!p) {
+      if (L === 4) { const a = rnd(11, 20); p = { a, b: rnd(1, Math.min(10, a - 1)), t: rnd(0, THINGS.length - 1) }; }
+      else { const a = rnd(L === 1 ? 2 : 3, L === 1 ? 5 : 10); p = { a, b: L <= 2 && Math.random() < .1 ? a : rnd(1, a - 1), t: rnd(0, THINGS.length - 1) }; }
+    }
+    const { a, b } = p, [e, pl, sg] = THINGS[p.t], left = a - b;
+    const pics = objs(a, e, b);
+    const st = stack(L <= 2 ? pics : null, eq([a, '−', b, '=', '?']));
+    const t = L <= 2 ? `${a} ${pl}. ${b} ${b === 1 ? 'goes' : 'go'} away. How many are left?` : `What is ${a} take away ${b}?`;
+    return { p, say: t, text: L <= 2 ? 'How many are left?' : `What is ${a} − ${b}?`, stage: st, answer: left,
+      choices: choicesFor(left, L === 1 ? 3 : 4, 0, 20),
+      help: async () => {
+        if (L > 2) { st.prepend(pics); await sleep(1900); }
+        await say(`${b} went away. Let's count who is left.`);
+        await countThrough([...pics.querySelectorAll('.obj:not(.gone)')]);
+        await say(`${left} ${left === 1 ? sg : pl} left!`);
+      } };
+  },
+  frame(L, p) {
+    const size = L === 1 ? 5 : 10;
+    p = p || { k: rnd(1, size - 1) };
+    const k = p.k, ans = size - k, fr = frameEl(size, k);
+    const st = stack(L <= 2 ? fr : null, L === 3 ? eq([k, '+', '?', '=', 10]) : null);
+    const t = L <= 2 ? `How many more to make ${size}?` : `${k} and what make 10?`;
+    return { p, say: t, text: t, stage: st, answer: ans,
+      choices: choicesFor(ans, L === 1 ? 3 : 4, 0, size),
+      help: async () => {
+        if (L === 3) st.prepend(fr);
+        await say(`Count the empty boxes.`);
+        await countThrough([...fr.querySelectorAll('.fc2:not(.on)')]);
+        await say(`${k} and ${ans} make ${size}!`);
+      } };
+  },
+
+  facts(L, p) {
+    // Number-only facts. Levels 2+ cross ten and teach the "make a ten" strategy.
+    if (!p) {
+      let a, b;
+      if (L === 1) { do { a = rnd(1, 9); b = rnd(1, 9); } while (a + b > 10); }
+      else { do { a = rnd(2, 9); b = rnd(2, 9); } while (a + b <= 10); }
+      const form = L <= 2 ? 'add' : L === 3 ? pick(['blankA', 'blankB']) : L === 4 ? pick(['sub', 'subBlank']) : pick(['add', 'blankA', 'blankB', 'sub', 'subBlank']);
+      p = { a, b, form };
+    }
+    const { a, b, form } = p, c = a + b, cross = c > 10;
+    const F = {
+      add:      { parts: [a, '+', b, '=', '?'], ans: c, say: `What is ${a} plus ${b}?` },
+      blankA:   { parts: ['?', '+', b, '=', c], ans: a, say: `What number plus ${b} makes ${c}?` },
+      blankB:   { parts: [a, '+', '?', '=', c], ans: b, say: `${a} plus what makes ${c}?` },
+      sub:      { parts: [c, '−', b, '=', '?'], ans: a, say: `What is ${c} take away ${b}?` },
+      subBlank: { parts: [c, '−', '?', '=', a], ans: b, say: `${c} take away what leaves ${a}?` },
+    }[form];
+    const st = stack(eq(F.parts));
+    const isSub = form === 'sub' || form === 'subBlank';
+    const early = P && P.skills.facts && P.skills.facts.seen < 15;   // explain the strategy while it is new
+    const teach = !cross || !early ? null : isSub
+      ? `${c} take away ${c - 10} is 10. Take away ${b - (c - 10)} more: ${a}.`
+      : `Make a ten! ${a} and ${10 - a} make 10, and ${b - (10 - a)} more is ${c}.`;
+    return { p, say: F.say, text: F.say, stage: st, answer: F.ans, teach,
+      choices: choicesFor(F.ans, 4, 0, 20, [F.ans + 10, isSub ? c : a + b + 1, F.ans - 10]),
+      help: async () => {
+        const fr = twoFrames(isSub ? c : a, isSub ? 0 : b); st.append(fr.el);
+        const cells = fr.cells;
+        if (isSub) {
+          if (cross) {
+            await say(`Start with ${c}. Take away ${c - 10} to get to 10.`);
+            for (let i = c - 1; i >= 10; i--) { cells[i].classList.add('x'); await sleep(250); }
+            await say(`Then take away ${b - (c - 10)} more.`);
+            for (let i = 9; i >= a; i--) { cells[i].classList.add('x'); await sleep(250); }
+          } else {
+            for (let i = c - 1; i >= a; i--) { cells[i].classList.add('x'); await sleep(250); }
+          }
+          await say(`${a} are left. ${c} take away ${b} is ${a}.`);
+        } else if (cross) {
+          await say(`${a} needs ${10 - a} more to make 10.`);
+          await countThrough(cells.slice(a, 10), a + 1);
+          await say(`10, and ${c - 10} more.`);
+          await countThrough(cells.slice(10, c), 11);
+          await say(`${a} plus ${b} is ${c}.`);
+        } else {
+          await say(`Start at ${a} and count on ${b}.`);
+          await countThrough(cells.slice(a, c), a + 1);
+          await say(`${a} plus ${b} is ${c}.`);
+        }
+        if (form === 'blankA' || form === 'blankB') await say(`The missing number is ${F.ans}.`);
+      } };
+  },
+  story(L, p) {
+    const CH = [['Pip', 'frog', 'he', 'his'], ['Rosie', 'rabbit', 'she', 'her'], ['Toby', 'turtle', 'he', 'his'], ['Lulu', 'ladybug', 'she', 'her'], ['Bo', 'panda', 'he', 'his'], ['Daisy', 'duck', 'she', 'her']];
+    const IT = [['shells', 'shell', '🐚'], ['apples', 'apple', '🍎'], ['stickers', 'sticker', '⭐'], ['cookies', 'cookie', '🍪'], ['flowers', 'flower', '🌼'], ['balloons', 'balloon', '🎈'], ['fish', 'fish', '🐟'], ['strawberries', 'strawberry', '🍓']];
+    if (!p) {
+      const type = pick([['join', 'sep'], ['cmp', 'part'], ['join', 'sep', 'cmp', 'part'], ['start', 'two']][L - 1]);
+      const big = L >= 3; let x, y, z = 0;
+      if (type === 'join')  { if (big) do { x = rnd(4, 9); y = rnd(3, 9); } while (x + y <= 10); else do { x = rnd(1, 7); y = rnd(1, 6); } while (x + y > 10); }
+      if (type === 'sep')   { x = big ? rnd(11, 18) : rnd(3, 10); y = big ? rnd(3, Math.min(9, x - 2)) : rnd(1, x - 1); }
+      if (type === 'cmp')   { x = big ? rnd(11, 18) : rnd(4, 10); y = rnd(big ? 5 : 1, x - 1); }
+      if (type === 'part')  { x = big ? rnd(11, 18) : rnd(4, 10); y = rnd(big ? 3 : 1, x - 1); }
+      if (type === 'start') { x = rnd(2, 9); y = rnd(2, 9); }
+      if (type === 'two')   { x = rnd(3, 9); y = rnd(2, 6); z = rnd(1, Math.min(9, x + y - 1)); }
+      const c1 = rnd(0, CH.length - 1); let c2; do { c2 = rnd(0, CH.length - 1); } while (c2 === c1);
+      p = { type, x, y, z, c1, c2, it: rnd(0, IT.length - 1) };
+    }
+    const { type, x, y, z } = p, [N, , pro, his] = CH[p.c1], M = CH[p.c2][0], [pl, sg, e] = IT[p.it];
+    const Pro = pro[0].toUpperCase() + pro.slice(1), w = n => (n === 1 ? sg : pl);
+    let text, ans, eqParts, build;
+    if (type === 'join') {
+      ans = x + y; text = `${N} has ${x} ${w(x)}. ${Pro} gets ${y} more. How many ${pl} does ${N} have now?`; eqParts = [x, '+', y, '=', ans];
+      build = () => { const d = el('div', 'objs'), A = objs(x, e), B = objs(y, e); d.append(A, el('span', 'plus', '+'), B); return { el: d, nodes: [...d.querySelectorAll('.obj')], start: 1, intro: `${x}, then ${y} more. Count them all.` }; };
+    } else if (type === 'sep') {
+      ans = x - y; text = `${N} has ${x} ${w(x)}. ${Pro} gives ${y} to ${M}. How many ${pl} does ${N} have left?`; eqParts = [x, '−', y, '=', ans];
+      build = () => { const d = objs(x, e, y); return { el: d, nodes: [...d.querySelectorAll('.obj:not(.gone)')], start: 1, intro: `${y} went to ${M}. Count what is left.` }; };
+    } else if (type === 'cmp') {
+      ans = x - y; text = `${N} has ${x} ${w(x)}. ${M} has ${y}. How many more ${pl} does ${N} have than ${M}?`; eqParts = [x, '−', y, '=', ans];
+      build = () => {
+        const d = stack(), r1 = el('div', 'srow'), r2 = el('div', 'srow');
+        r1.append(el('b', '', N), objs(x, e)); r2.append(el('b', '', M), objs(y, e)); d.append(r1, r2);
+        return { el: d, nodes: [...r1.querySelectorAll('.obj')].slice(y), start: 1, intro: `Match them up. Count the extra ones ${N} has.` };
+      };
+    } else if (type === 'part') {
+      ans = x - y; text = `${N} picks ${x} ${w(x)}. ${y} are big and the rest are small. How many are small?`; eqParts = [x, '−', y, '=', ans];
+      build = () => { const d = objs(x, e, y); return { el: d, nodes: [...d.querySelectorAll('.obj:not(.gone)')], start: 1, intro: `Take away the ${y} big ones. Count the small ones.` }; };
+    } else if (type === 'start') {
+      const c = x + y; ans = x; text = `${N} had some ${pl}. ${Pro} found ${y} more. Now ${pro} has ${c}. How many did ${pro} have at the start?`; eqParts = ['?', '+', y, '=', c];
+      build = () => { const d = objs(c, e, y); return { el: d, nodes: [...d.querySelectorAll('.obj:not(.gone)')], start: 1, intro: `Start with ${c}. Take away the ${y} ${pro} found.` }; };
+    } else {
+      ans = x + y - z; text = `${x} frogs sit on a log. ${y} more hop on. Then ${z} hop off. How many frogs are on the log now?`; eqParts = [x, '+', y, '−', z, '=', ans];
+      build = () => { const d = objs(x + y, '🐸', z); return { el: d, nodes: [...d.querySelectorAll('.obj:not(.gone)')], start: 1, intro: `${x} and ${y} more is ${x + y}. ${z} hopped off. Count who is left.` }; };
+    }
+    const pics = L <= 2 ? build() : null;
+    const st = stack(pics ? pics.el : el('div', 'listen', '📖'));
+    const said = eqParts.map(t => t === '+' ? 'plus' : t === '−' ? 'minus' : t === '=' ? 'equals' : t === '?' ? 'what' : t).join(' ');
+    return { p, say: text, text, stage: st, answer: ans, story: true,
+      choices: choicesFor(ans, 4, 0, 25, type === 'join' || type === 'two' ? [ans + 1, x] : [x + y, y]),
+      teach: eqParts.join(' ').replace('?', String(ans)),
+      teachSay: said.replace('what', String(ans)),
+      help: async () => {
+        const b = pics || build();
+        if (!pics) { st.replaceChildren(b.el); await sleep(type === 'join' ? 200 : 1900); }
+        await say(b.intro);
+        await countThrough(b.nodes, b.start);
+        st.append(eq(eqParts));
+        await say(said + '?');
+      } };
+  },
+  bpattern(L, p) {
+    if (L === 1) {
+      if (!p) {
+        const items = shuffle(PAT.slice()).slice(0, 3);
+        const unit = pick([[0, 1, 2], [0, 0, 1, 1], [0, 1, 1], [0, 0, 1], [0, 1, 0, 2]]);
+        p = { items: items.map(x => PAT.indexOf(x)), unit, shown: unit.length * 2 + rnd(0, unit.length - 1) };
+      }
+      const it = p.items.map(i => PAT[i]), seq = [];
+      while (seq.length <= p.shown) seq.push(...p.unit);
+      const row = el('div', 'pat'), spans = [];
+      for (let i = 0; i < p.shown; i++) { const s = el('span', '', it[seq[i]][0]); spans.push(s); row.append(s); }
+      row.append(el('span', 'gap', '?'));
+      const opts = p.opts || (p.opts = shuffle([...new Set(p.unit)]));
+      if (opts.length < 3) opts.push(...[0, 1, 2].filter(i => !opts.includes(i)).slice(0, 3 - opts.length));
+      const cards = opts.map(i => { const c = el('span', 'sz', it[i][0]); c.style.fontSize = '3.2rem'; return c; });
+      const ansIdx = seq[p.shown];
+      return { p, kind: 'cards', cards, say: 'What comes next in the pattern?', text: 'What comes next?', stage: row, answer: String(opts.indexOf(ansIdx)),
+        help: async () => { for (let i = 0; i < spans.length; i++) { spans[i].classList.add('lit'); await say(it[seq[i]][1], 360); } await say(`Next comes ${it[ansIdx][1]}!`); } };
+    }
+    if (!p) {
+      let seq, miss, rule;
+      if (L === 2) { const s = pick([2, 5, 10]); const a = s * rnd(0, 4); seq = [0, 1, 2, 3, 4].map(i => a + s * i); miss = 4; rule = `It counts by ${s}s.`; }
+      else if (L === 3) { const s = pick([1, 2, 10]); const a = s === 10 ? 10 * rnd(6, 10) : s === 2 ? 2 * rnd(7, 10) : rnd(12, 20); seq = [0, 1, 2, 3, 4].map(i => a - s * i); miss = 4; rule = `It goes down by ${s} each time.`; }
+      else if (L === 4) { const s = pick([1, 2, 5, 10]); const a = s * rnd(1, 5); seq = [0, 1, 2, 3, 4].map(i => a + s * i); miss = rnd(1, 3); rule = `It goes up by ${s} each time.`; }
+      else {
+        const kind = pick(['odd', 'grow', 'repeat', 'down5']);
+        if (kind === 'odd') { const a = 2 * rnd(0, 3) + 1; seq = [0, 1, 2, 3, 4].map(i => a + 2 * i); rule = 'These are odd numbers. It skips by 2.'; }
+        if (kind === 'grow') { seq = [1, 2, 4, 7, 11]; const k = rnd(0, 2); seq = seq.map(v => v + k); rule = 'It grows by one more each time: plus 1, plus 2, plus 3, plus 4.'; }
+        if (kind === 'repeat') { const u = shuffle([1, 2, 3, 4, 5]).slice(0, 3); seq = [...u, ...u].slice(0, 5); rule = `It repeats: ${u.join(', ')}.`; }
+        if (kind === 'down5') { const a = 5 * rnd(8, 12); seq = [0, 1, 2, 3, 4].map(i => a - 5 * i); rule = 'It counts down by 5s.'; }
+        miss = 4;
+      }
+      p = { seq, miss, rule };
+    }
+    const { seq, miss } = p, ans = seq[miss], nl = el('div', 'nl'), cells = [];
+    seq.forEach((v, i) => { const c = el('div', i === miss ? 'cell q' : 'cell', i === miss ? '?' : String(v)); cells.push(c); nl.append(c); });
+    const step = seq[1] - seq[0];
+    return { p, say: 'What number is missing?', text: 'What number is missing?', stage: nl, answer: ans,
+      choices: choicesFor(ans, 4, 0, 120, [ans + step, ans - step, ans + 1, ans - 1].filter(v => v !== ans)),
+      teach: L >= 2 && L <= 4 ? p.rule : null,
+      help: async () => {
+        for (let i = 0; i < cells.length; i++) { if (i === miss) continue; cells[i].classList.add('lit'); await say(String(seq[i]), 420); }
+        await say(p.rule);
+        await say(`So the missing number is ${ans}.`);
+      } };
+  },
+  teaser(L, p) {
+    if (L === 1) {
+      const CATS = [['fruit', ['🍎', '🍌', '🍇', '🍓', '🍊', '🍐']], ['animals', ['🐶', '🐱', '🐰', '🐻', '🐷', '🐮']], ['things that go', ['🚗', '🚌', '🚲', '🚂', '🚀', '🚜']], ['sea animals', ['🐟', '🐙', '🐳', '🦀', '🐬', '🦈']]];
+      if (!p) {
+        const [ci, oi] = shuffle([0, 1, 2, 3]).slice(0, 2);
+        const same = shuffle(CATS[ci][1].slice()).slice(0, 3), odd = pick(CATS[oi][1]);
+        const opts = shuffle([...same, odd]);
+        p = { ci, opts, odd: opts.indexOf(odd) };
+      }
+      const cards = p.opts.map(e => { const c = el('span', 'sz', e); c.style.fontSize = '3rem'; return c; });
+      return { p, kind: 'cards', cards, say: 'Which one does not belong?', text: 'Which one does not belong?', stage: stack(el('div', 'listen', '🤔')), answer: String(p.odd),
+        teach: `The others are all ${CATS[p.ci][0]}.`,
+        help: async () => { await say(`Three of these go together. They are all ${CATS[p.ci][0]}. Which one is different?`); } };
+    }
+    if (L === 2) {
+      const R = [
+        () => { const n = rnd(5, 19); return { t: `I come right after ${n}. What number am I?`, a: n + 1 }; },
+        () => { const n = rnd(6, 20); return { t: `I come right before ${n}. What number am I?`, a: n - 1 }; },
+        () => { const n = rnd(3, 14), k = rnd(2, 3); return { t: `I am ${k} more than ${n}. What number am I?`, a: n + k }; },
+        () => { const n = rnd(6, 18), k = rnd(2, 3); return { t: `I am ${k} less than ${n}. What number am I?`, a: n - k }; },
+        () => { const n = rnd(4, 18); return { t: `I am between ${n} and ${n + 2}. What number am I?`, a: n + 1 }; },
+        () => { const o = rnd(1, 9); return { t: `I have 1 ten and ${o} ones. What number am I?`, a: 10 + o }; },
+        () => { const [w, e, per, part] = pick([['ducks', '🦆', 2, 'legs'], ['cats', '🐱', 2, 'eyes'], ['bikes', '🚲', 2, 'wheels'], ['dogs', '🐶', 4, 'legs'], ['cars', '🚗', 4, 'wheels']]); const k = per === 4 ? rnd(2, 3) : rnd(2, 5); return { t: `How many ${part} do ${k} ${w} have?`, a: k * per, pic: [k, e, per] }; },
+      ];
+      if (!p) { const i = rnd(0, R.length - 1), r = R[i](); p = { t: r.t, a: r.a, pic: r.pic || null }; }
+      const st = stack(p.pic ? objs(p.pic[0], p.pic[1]) : el('div', 'listen', '🤔'));
+      return { p, say: p.t, text: p.t, stage: st, answer: p.a,
+        choices: choicesFor(p.a, 4, 0, 30),
+        help: async () => {
+          if (p.pic) {
+            const [k, , per] = p.pic, steps = [];
+            for (let i = 1; i <= k; i++) steps.push(per * i);
+            await say(`Count by ${per}s: ${steps.join(', ')}.`);
+          } else await say(`Let's think. ${p.t.replace(' What number am I?', '')}`);
+          await say(`The answer is ${p.a}.`);
+        } };
+    }
+    const SYM = [['🍎', 'apple'], ['🍌', 'banana'], ['⭐', 'star'], ['🐸', 'frog'], ['🌼', 'flower']];
+    if (L === 3) {
+      if (!p) {
+        const s = rnd(0, SYM.length - 1), kind = pick(['double', 'triple', 'plus']);
+        const a = kind === 'triple' ? rnd(1, 4) : kind === 'double' ? rnd(1, 6) : rnd(1, 9), n = rnd(2, 9);
+        p = { s, kind, a, n };
+      }
+      const [e, nm] = SYM[p.s], { kind, a, n } = p;
+      const parts = kind === 'double' ? [e, '+', e, '=', 2 * a] : kind === 'triple' ? [e, '+', e, '+', e, '=', 3 * a] : [e, '+', n, '=', a + n];
+      const k = kind === 'triple' ? 3 : 2;
+      const words = kind === 'plus' ? `A ${nm} plus ${n} makes ${a + n}. What number is the ${nm}?` : `${k === 2 ? 'Two' : 'Three'} ${nm}s make ${k * a}. What number is one ${nm}?`;
+      const st = stack(eq(parts), eq([e, '=', '?']));
+      return { p, say: words, text: words, stage: st, answer: a,
+        choices: choicesFor(a, 4, 0, 20, [kind === 'plus' ? a + n : k * a]),
+        help: async () => {
+          if (kind === 'plus') {
+            const d = objs(a, '🔵'); st.append(d);
+            await say(`What plus ${n} makes ${a + n}? Count up from ${n}.`);
+            await countThrough([...d.querySelectorAll('.obj')], n + 1);
+          } else {
+            const d = el('div', 'objs'); for (let i = 0; i < k; i++) d.append(objs(a, '🔵')); st.append(d);
+            await say(`Share ${k * a} into ${k} equal groups.`);
+            await countThrough([...d.firstChild.querySelectorAll('.obj')]);
+          }
+          await say(`The ${nm} is ${a}.`);
+        } };
+    }
+    if (!p) { const [s1, s2] = shuffle([0, 1, 2, 3, 4]).slice(0, 2); p = { s1, s2, a: rnd(1, 5), b: rnd(1, 6) }; }
+    const [e1, n1] = SYM[p.s1], [e2, n2] = SYM[p.s2], { a, b } = p;
+    const words = `Two ${n1}s make ${2 * a}. A ${n1} and a ${n2} make ${a + b}. What number is the ${n2}?`;
+    return { p, say: words, text: words, stage: stack(eq([e1, '+', e1, '=', 2 * a]), eq([e1, '+', e2, '=', a + b]), eq([e2, '=', '?'])), answer: b,
+      choices: choicesFor(b, 4, 0, 20, [a, a + b]),
+      help: async () => { await say(`First find the ${n1}. Two ${n1}s make ${2 * a}, so one ${n1} is ${a}. Then ${a} plus what makes ${a + b}? ${b}!`); } };
+  },
+
+  tens(L, p) {
+    // Two-digit adding and taking away, always tied back to tens and ones.
+    if (!p) {
+      if (L === 1) { const a = 10 * rnd(1, 6), b = 10 * rnd(1, 9 - a / 10); p = { a, b, op: '+' }; }
+      else if (L === 2) { const a = 10 * rnd(2, 8) + rnd(0, 5); p = { a, b: rnd(1, 9 - a % 10), op: '+' }; }
+      else if (L === 3) { const a = 10 * rnd(4, 9); p = { a, b: 10 * rnd(1, a / 10 - 1), op: '−' }; }
+      else if (L === 4) {
+        if (Math.random() < .55) { const a = 10 * rnd(1, 7) + rnd(5, 9); p = { a, b: rnd(10 - a % 10, 9), op: '+' }; }
+        else { const a = 10 * rnd(2, 8) + rnd(0, 4); p = { a, b: rnd(a % 10 + 1, 9), op: '−' }; }
+      } else {
+        let a, b; do { a = 10 * rnd(1, 6) + rnd(0, 6); b = 10 * rnd(1, 3) + rnd(0, 5); } while (a % 10 + b % 10 > 9 || a + b > 99);
+        p = { a, b, op: '+' };
+      }
+    }
+    const { a, b, op } = p, ans = op === '+' ? a + b : a - b;
+    const st = stack(eq([a, op, b, '=', '?']));
+    const q = `What is ${a} ${op === '+' ? 'plus' : 'take away'} ${b}?`;
+    const ta = Math.floor(a / 10), oa = a % 10, tb = Math.floor(b / 10), ob = b % 10;
+    let teach;
+    if (L === 1 || L === 3) teach = `${ta} tens ${op === '+' ? 'plus' : 'take away'} ${tb} tens is ${ans / 10} tens. ${ans}!`;
+    else if (L === 2) teach = 'Only the ones change. The tens stay the same.';
+    else if (L === 4) teach = op === '+' ? `${a} needs ${10 - oa} to make ${a + 10 - oa}. Then ${b - (10 - oa)} more is ${ans}.` : `${a} take away ${oa} is ${a - oa}. Take away ${b - oa} more: ${ans}.`;
+    else teach = `Add the tens: ${ta * 10} plus ${tb * 10} is ${(ta + tb) * 10}. Add the ones: ${oa} plus ${ob} is ${oa + ob}. ${ans}!`;
+    return { p, say: q, text: q, stage: st, answer: ans, teach,
+      choices: choicesFor(ans, 4, 0, 120, [ans + 10, ans - 10, op === '+' ? ans + 1 : ans - 1]),
+      help: async () => {
+        if (L === 1 || L === 3) {
+          const blk = baseEl(0, ta, 0); st.append(blk.el);
+          if (op === '+') { await countParts(blk.parts); const more = baseEl(0, tb, 0); blk.el.append(...more.el.children); await say(`${tb} more tens.`); await countParts(more.parts, a); }
+          else { await countParts(blk.parts); const bars = [...blk.el.querySelectorAll('.stick')]; bars.slice(-tb).forEach(x => x.classList.add('away')); await say(`Take away ${tb} tens.`); }
+        } else if (L === 2) {
+          const blk = baseEl(0, ta, oa); st.append(blk.el);
+          await say(`${a} is ${ta} tens and ${oa} ones. Count on ${b} more.`);
+          const os = el('div', 'ones'), parts = [];
+          for (let i = 0; i < b; i++) { const c = el('i', 'bn'); os.append(c); parts.push({ el: c, v: 1 }); }
+          blk.el.append(os); await countParts(parts, a);
+        } else await say(teach);
+        await say(`${a} ${op === '+' ? 'plus' : 'take away'} ${b} is ${ans}.`);
+      } };
+  },
+  groups(L, p) {
+    const e = THINGS[(p && p.t) ?? rnd(0, THINGS.length - 1)];
+    if (L === 2) {
+      p = p || { d: rnd(3, 9), near: Math.random() < .5, t: 0 };
+      const { d, near } = p, b = near ? d + 1 : d, ans = d + b;
+      const q = `What is ${d} plus ${b}?`;
+      return { p, say: q, text: q, stage: stack(eq([d, '+', b, '=', '?'])), answer: ans,
+        choices: choicesFor(ans, 4, 0, 20, [ans + 1, ans - 1, 2 * d + 2]),
+        teach: near ? `Double ${d} is ${2 * d}, and one more is ${ans}.` : `Double ${d} is ${2 * d}.`,
+        help: async () => { await say(near ? `${d} plus ${d} is ${2 * d}. ${b} is one more than ${d}, so add one more: ${ans}.` : `Doubles! ${d} and ${d}.`); if (!near) { const g = el('div', 'objs'); const A = objs(d, '🔵'), B = objs(d, '🔵'); g.append(A, B); $('#stage').firstChild.append(g); await countThrough([...g.querySelectorAll('.obj')]); } } };
+    }
+    if (L === 4) {
+      p = p || { r: rnd(2, 5), c: rnd(2, 5), t: rnd(0, THINGS.length - 1) };
+      const { r, c } = p, ans = r * c, arr = el('div', 'arows'), parts = [];
+      for (let i = 0; i < r; i++) { const row = el('div', 'arow bn'); for (let j = 0; j < c; j++) row.append(el('span', 'obj', THINGS[p.t][0])); arr.append(row); parts.push({ el: row, v: c }); }
+      const q = `There are ${r} rows with ${c} in each row. How many in all?`;
+      return { p, say: q, text: q, stage: stack(arr), answer: ans,
+        choices: choicesFor(ans, 4, 1, 30, [r + c, ans + c, ans - c]),
+        teach: `${r} rows of ${c} is ${ans}.`,
+        help: async () => { await say(`Count by ${c}s, one row at a time.`); await countParts(parts); } };
+    }
+    const k = (p && p.k) || rnd(2, L === 1 ? 4 : 4), n = (p && p.n) || (L === 1 ? rnd(2, 5) : rnd(2, 4));
+    p = p || { k, n, t: THINGS.indexOf(e) };
+    const [em, pl] = THINGS[p.t], wrap = el('div', 'objs'), parts = [];
+    if (L === 1) {
+      for (let i = 0; i < p.k; i++) { const g = objs(p.n, em); wrap.append(g); const gr = g.firstChild; gr.classList.add('bn'); parts.push({ el: gr, v: p.n }); }
+      const q = `${p.k} groups with ${p.n} ${pl} in each. How many ${pl} in all?`;
+      return { p, say: q, text: q, stage: wrap, answer: p.k * p.n,
+        choices: choicesFor(p.k * p.n, 4, 1, 30, [p.k + p.n, p.k * p.n + p.n]),
+        teach: `${p.k} groups of ${p.n} is ${p.k * p.n}.`,
+        help: async () => { await say(`Count by ${p.n}s.`); await countParts(parts); } };
+    }
+    // L3: share equally
+    const total = p.k * p.n, pile = objs(total, em);
+    const q = `${total} ${pl} are shared equally by ${p.k} friends. How many does each friend get?`;
+    return { p, say: q, text: q, stage: stack(pile), answer: p.n,
+      choices: choicesFor(p.n, 4, 1, 12, [p.k, total - p.k]),
+      teach: `${total} shared by ${p.k} is ${p.n} each.`,
+      help: async () => {
+        const g = el('div', 'objs'); for (let i = 0; i < p.k; i++) g.append(objs(p.n, em));
+        pile.replaceWith(g); await say(`Give one to each friend, again and again. Each friend gets ${p.n}.`);
+        await countThrough([...g.firstChild.querySelectorAll('.obj')]);
+      } };
+  },
+  clock(L, p) {
+    const fmt = (h, m) => `${h}:${m ? '30' : '00'}`, words = (h, m) => m ? `half past ${h}` : `${h} o'clock`;
+    const nextH = h => h === 12 ? 1 : h + 1, prevH = h => h === 1 ? 12 : h - 1;
+    if (!p) p = { h: rnd(1, 12), m: L === 1 ? 0 : L === 4 ? 0 : (Math.random() < .6 ? 30 : 0) };
+    const { h, m } = p;
+    if (L === 3) {
+      if (!p.opts) {
+        const wrong = shuffle([[nextH(h), m], [h, m ? 0 : 30], [prevH(h), m]]).slice(0, 2);
+        p.opts = shuffle([[h, m], ...wrong]);
+      }
+      const cards = p.opts.map(([a, b]) => clockEl(a, b));
+      const q = `Which clock shows ${words(h, m)}?`;
+      return { p, kind: 'cards', cards, say: q, text: q, stage: stack(el('div', 'eq', fmt(h, m))), answer: String(p.opts.findIndex(([a, b]) => a === h && b === m)),
+        help: async () => { await say(m ? `Half past means the long hand points down to the 6, and the short hand is just past the ${h}.` : `${h} o'clock means the long hand points straight up to the 12, and the short hand points to the ${h}.`); } };
+    }
+    const shown = clockEl(h, m);
+    const ansH = L === 4 ? nextH(h) : h, ans = fmt(ansH, m);
+    const q = L === 4 ? `It is ${words(h, m)}. What time will it be in one hour?` : 'What time is it?';
+    const opts = new Set([ans]);
+    for (const [a, b] of shuffle([[nextH(ansH), m], [prevH(ansH), m], [ansH, m ? 0 : 30], [12, 0], [m ? nextH(ansH) : 6, m ? 30 : 0]])) if (opts.size < 4) opts.add(fmt(a, b));
+    return { p, say: q, text: q, stage: stack(shown), answer: ans, choices: [...opts].sort((x, y) => parseFloat(x) - parseFloat(y)),
+      teach: L === 4 ? `One hour after ${h} is ${ansH}.` : `The short hand shows the hour.`,
+      help: async () => {
+        shown.classList.add('lit');
+        await say(`The short pink hand shows the hour. It points ${m ? 'just past the' : 'to the'} ${h}. The long green hand points to the ${m ? '6, that means half past' : '12, that means o\'clock'}.`);
+        if (L === 4) await say(`One hour later, the short hand moves to the ${ansH}.`);
+        await say(`It's ${words(ansH, m)}.`);
+      } };
+  },
+  money(L, p) {
+    if (!p) {
+      if (L === 1) p = { d: 0, n: 0, c: rnd(3, 12) };
+      else if (L === 2) p = { d: 0, n: rnd(1, 3), c: rnd(0, 4) };
+      else if (L === 3) p = { d: rnd(1, 4), n: 0, c: rnd(0, 9) };
+      else p = { d: rnd(1, 3), n: 1, c: rnd(0, 4) };
+    }
+    const { d, n, c } = p, ans = 10 * d + 5 * n + c, wrap = el('div', 'coins'), parts = [];
+    const add = (cls, v, lbl, k) => { for (let i = 0; i < k; i++) { const x = el('span', 'coin bn ' + cls, lbl); wrap.append(x); parts.push({ el: x, v }); } };
+    add('c10', 10, '10¢', d); add('c5', 5, '5¢', n); add('c1', 1, '1¢', c);
+    const cents = v => `${v}¢`;
+    return { p, say: 'How much money is this?', text: 'How much money?', stage: stack(wrap), answer: cents(ans),
+      choices: choicesFor(ans, 4, 1, 60, [d + n + c, ans + 5, ans - 5].filter(v => v !== ans)).map(cents),
+      teach: L >= 2 ? `${d ? 'Dimes are 10 cents. ' : ''}${n ? 'A nickel is 5 cents. ' : ''}Pennies are 1 cent.` : null,
+      help: async () => {
+        await say(d ? 'Count the dimes by 10s, then nickels by 5s, then pennies by 1s.' : n ? 'Count the nickels by 5s, then the pennies by 1s.' : 'Each penny is 1 cent. Count them.');
+        await countParts(parts);
+        await say(`${ans} cents!`);
+      } };
+  },
+
+  grid(L, p) {
+    if (L === 1 || L === 4) return wallpaperQ(L === 1 ? 1 : 2, p);
+    p = p || makeMatrix(L);
+    const g = el('div', 'mgrid'), tiles = [];
+    g.style.setProperty('--k', p.k);
+    p.cells.forEach((t, i) => { const d = el('div', 'mtile' + (i === p.hole ? ' hole' : '')); if (i === p.hole) d.textContent = '?'; else d.innerHTML = tileSVG(t); tiles.push(d); g.append(d); });
+    const cards = p.opts.map(t => { const d = el('div', 'mpiece'); d.innerHTML = tileSVG(t); return d; });
+    const ans = p.opts[p.ans], hr = Math.floor(p.hole / p.k), hc = p.hole % p.k;
+    const early = P && P.skills.grid && P.skills.grid.seen < 20;
+    const light = f => tiles.forEach((d, i) => d.classList.toggle('lit', f(i)));
+    return { p, kind: 'cards', cards, say: 'Which piece is missing?', text: 'Which piece is missing?', stage: g, answer: String(p.ans),
+      teach: early ? p.rule : null,
+      help: async () => {
+        light(i => Math.floor(i / p.k) === hr); await say('Look across this row.');
+        light(i => i % p.k === hc); await say('Now look down this column.');
+        light(() => false); await say(p.rule);
+        await say(`So the missing piece is ${tileWords(ans)}.`);
+      } };
+  },
+
+  /* ----- geometry: K.G.2, K.G.3, K.G.4, 1.G.1, 1.G.3 ----- */
+  shapes(L, p) {
+    const COLS = ['#d93636', '#2b6fd6', '#f2b51f', '#2fa84f', '#8a4fd6'];
+    if (L === 1) {
+      const pool = ['circle', 'square', 'triangle', 'rectangle', 'hexagon'];
+      if (!p) { const target = pick(pool); p = { target, opts: shuffle([target, ...shuffle(pool.filter(s => s !== target)).slice(0, 3)]), rot: [0, 1, 2, 3].map(() => pick([0, 15, 30, 45, 90, 180])), sc: [0, 1, 2, 3].map(() => pick([.6, .8, 1])), cols: shuffle(COLS.slice()) }; }
+      const cards = p.opts.map((s, i) => flatEl(s, p.cols[i], p.rot[i], p.sc[i]));
+      return { p, kind: 'cards', cards, say: `Find the ${p.target}.`, text: `Find the ${p.target}.`, stage: stack(el('div', 'listen', '?')), answer: String(p.opts.indexOf(p.target)),
+        teach: 'A shape keeps its name even when it is turned or a different size.',
+        help: async () => { await say(SHAPES[p.target][1] + ' Turning it or making it bigger does not change its name.'); } };
+    }
+    if (L === 2) {
+      if (!p) {
+        const solids = ['cube', 'cone', 'cylinder', 'sphere'], flats = ['circle', 'square', 'triangle', 'rectangle'];
+        const kind = pick(['name', 'name', 'solid', 'flat']);
+        let opts, target;
+        if (kind === 'name') { target = pick(solids); opts = shuffle(solids.slice()); }
+        else if (kind === 'solid') { target = pick(solids); opts = shuffle([target, ...shuffle(flats).slice(0, 3)]); }
+        else { target = pick(flats); opts = shuffle([target, ...shuffle(solids).slice(0, 3)]); }
+        p = { kind, target, opts, cols: shuffle(COLS.slice()) };
+      }
+      const solid = s => ['cube', 'cone', 'cylinder', 'sphere'].includes(s);
+      const cards = p.opts.map((s, i) => solid(s) ? artEl(solidSVG(s, p.cols[i]), 'solid') : flatEl(s, p.cols[i], 0, .8));
+      const q = p.kind === 'name' ? `Find the ${p.target}.` : p.kind === 'solid' ? 'Which shape is solid, not flat?' : 'Which shape is flat?';
+      const SOLID_TIPS = { cube: 'A cube is like a box or a block. All its faces are squares.', cone: 'A cone is like an ice cream cone. It has a point on top and a circle on the bottom.', cylinder: 'A cylinder is like a can. It has a circle on the top and the bottom.', sphere: 'A sphere is round all over, like a ball.' };
+      return { p, kind: 'cards', cards, say: q, text: q, stage: stack(el('div', 'listen', '?')), answer: String(p.opts.indexOf(p.target)),
+        teach: p.kind === 'name' ? SOLID_TIPS[p.target] : 'Flat shapes lie flat on paper. Solid shapes you can pick up and hold.',
+        help: async () => { await say(p.kind === 'name' ? SOLID_TIPS[p.target] : 'Flat shapes are like drawings on paper. Solid shapes are like things you can hold, such as a ball, a box or a can.'); } };
+    }
+    if (L === 3) {
+      const SIDES = { triangle: 3, square: 4, rectangle: 4, pentagon: 5, hexagon: 6, circle: 0 };
+      if (!p) p = { s: pick(['triangle', 'square', 'rectangle', 'pentagon', 'hexagon', 'triangle', 'hexagon', 'circle']), ask: pick(['sides', 'corners']), rot: pick([0, 20, 45, 90]), col: pick(COLS) };
+      const n = SIDES[p.s], d = el('div', 'shape bigshape');
+      d.innerHTML = `<svg viewBox="0 0 100 100" aria-hidden="true"><g transform="rotate(${p.rot} 50 50)"><g style="fill:${p.col}">${SHAPES[p.s][0]}</g>${(VERTS[p.s] || []).map(([x, y]) => `<circle class="vdot" cx="${x}" cy="${y}" r="7"/>`).join('')}</g></svg>`;
+      const q = `How many ${p.ask} does this shape have?`;
+      return { p, say: q, text: q, stage: stack(d), answer: n, choices: choicesFor(n, 4, 0, 8),
+        teach: n ? `A ${p.s} has ${n} sides and ${n} corners.` : 'A circle has no sides and no corners.',
+        help: async () => {
+          if (!n) { await say('A circle is round. It has no straight sides and no corners. Zero!'); return; }
+          await say(`Let's count the corners. A shape has the same number of sides as corners.`);
+          const dots = [...d.querySelectorAll('.vdot')];
+          for (let i = 0; i < dots.length; i++) { dots[i].classList.add('on'); tone(440 + i * 50, .12, 'sine', 0, .06); await say(String(i + 1), 500); }
+          await say(`A ${p.s} has ${n} sides and ${n} corners.`);
+        } };
+    }
+    if (L === 4) {
+      if (!p) {
+        const want = pick(['half', 'fourth']), base = pick(['circle', 'rect']);
+        const others = want === 'half' ? ['unequal2', 'fourth', 'third'] : ['unequal4', 'half', 'third'];
+        p = { want, base, opts: shuffle([want, ...others]) };
+      }
+      const cards = p.opts.map(k => artEl(partsSVG(p.base, k), 'parts'));
+      const thing = p.base === 'circle' ? 'pizza' : 'sandwich';
+      const q = p.want === 'half' ? `Which ${thing} is cut into halves?` : `Which ${thing} is cut into fourths?`;
+      return { p, kind: 'cards', cards, say: q, text: q, stage: stack(el('div', 'listen', p.base === 'circle' ? '🍕' : '🥪')), answer: String(p.opts.indexOf(p.want)),
+        teach: p.want === 'half' ? 'Halves are 2 equal parts.' : 'Fourths are 4 equal parts. Fourths are also called quarters.',
+        help: async () => { await say(p.want === 'half' ? 'Halves means 2 parts that are exactly the same size.' : 'Fourths means 4 parts that are all the same size.'); await say('Count the parts, then check that they are all the same size.'); } };
+    }
+    // L5: defining attributes (1.G.1)
+    if (!p) {
+      const shape = pick(['triangle', 'rectangle']), not = Math.random() < .4;
+      const goods = [0, 1, 2].map(() => attrShape(shape, 'good')), bads = shuffle(['open', 'curve', 'wrong']).map(k => attrShape(shape, k));
+      const opts = not ? shuffle([...goods, bads[0]]) : shuffle([goods[0], ...bads]);
+      p = { shape, not, opts, cols: shuffle(COLS.slice()) };
+    }
+    const cards = p.opts.map((o, i) => { const d = el('div', 'shape'); d.innerHTML = `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="${o.d}" style="fill:${o.closed ? p.cols[i] : 'none'};stroke:${p.cols[i]};stroke-width:5;stroke-linejoin:round;stroke-linecap:round;fill-opacity:.35"/></svg>`; return d; });
+    const answer = String(p.opts.findIndex(o => p.not ? !o.good : o.good));
+    const rule = p.shape === 'triangle' ? 'A triangle is closed and has 3 straight sides.' : 'A rectangle is closed, has 4 straight sides and 4 square corners.';
+    const q = p.not ? `Which one is NOT a ${p.shape}?` : `Which one is a ${p.shape}?`;
+    return { p, kind: 'cards', cards, say: q, text: q, stage: stack(el('div', 'listen', '?')), answer,
+      teach: `${rule} Color, size and turning don't matter.`,
+      help: async () => { await say(`${rule} Check each one: is it closed? Are the sides straight?`); } };
+  },
+  /* ----- measurement: K.MD.2, 1.MD.1, 1.MD.2 ----- */
+  measure(L, p) {
+    const COLS = ['#d93636', '#2b6fd6', '#f2b51f', '#2fa84f', '#8a4fd6'];
+    if (L === 1 || L === 3) {
+      if (!p) {
+        const kind = pick(['pencil', 'tower']), n = L === 1 ? 2 : 3;
+        let lens; do { lens = [0, 1, 2].slice(0, n).map(() => rnd(2, kind === 'tower' ? 8 : 9)); } while (new Set(lens).size < n || Math.max(...lens) - Math.min(...lens) < 2);
+        p = { kind, lens, ask: pick(['more', 'less']), cols: shuffle(COLS.slice()) };
+      }
+      const { kind, lens, ask } = p, three = lens.length === 3;
+      const word = kind === 'pencil' ? (ask === 'more' ? (three ? 'longest' : 'longer') : (three ? 'shortest' : 'shorter')) : (ask === 'more' ? (three ? 'tallest' : 'taller') : (three ? 'shortest' : 'shorter'));
+      const target = ask === 'more' ? Math.max(...lens) : Math.min(...lens);
+      const cards = lens.map((n, i) => artEl(kind === 'pencil' ? pencilSVG(n, p.cols[i]) : towerSVG(n, p.cols[i]), kind === 'pencil' ? 'pencilart' : 'towerart'));
+      const q = `Which ${kind} is the ${word}?`.replace(/the (longer|shorter|taller)/, '$1');
+      return { p, kind: 'cards', cards, say: q, text: q, stage: stack(el('div', 'listen', '📏')), answer: String(lens.indexOf(target)),
+        teach: three ? 'Line them up at the same start, then compare the ends.' : null,
+        help: async () => { await say(kind === 'pencil' ? 'Imagine lining them up at the same starting point. Which one sticks out farther?' : 'Look at the tops. Which one reaches higher?'); } };
+    }
+    if (L === 2) {
+      if (!p) p = { heavy: rnd(0, 1), ask: pick(['heavier', 'lighter']), cols: shuffle(COLS.slice()).slice(0, 2) };
+      const sc = el('div', 'scaleart'); sc.innerHTML = scaleSVG(p.heavy, p.cols);
+      const cards = p.cols.map(c => artEl(`<svg viewBox="0 0 100 100" aria-hidden="true"><rect x="18" y="22" width="64" height="62" rx="8" fill="${c}"/><rect x="18" y="40" width="64" height="9" fill="rgba(255,255,255,.55)"/><rect x="45" y="22" width="9" height="62" fill="rgba(255,255,255,.55)"/></svg>`, 'boxart'));
+      const ans = p.ask === 'heavier' ? p.heavy : 1 - p.heavy;
+      const q = `Which box is ${p.ask}?`;
+      return { p, kind: 'cards', cards, say: q, text: q, stage: stack(sc), answer: String(ans),
+        teach: 'The heavier side goes down. The lighter side goes up.',
+        help: async () => { await say('On a balance, the heavier side sinks down and the lighter side goes up.'); } };
+    }
+    // L4: measure length with cubes (1.MD.2)
+    p = p || { n: rnd(3, 10), extra: rnd(1, 2) };
+    const wrap = el('div', 'measure'), pen = el('div', 'pen'), row = el('div', 'cuberow'), cubes = [];
+    wrap.style.setProperty('--n', p.n);
+    for (let i = 0; i < p.n + p.extra; i++) { const c = el('div', 'ucube bn'); row.append(c); if (i < p.n) cubes.push(c); }
+    wrap.append(pen, row);
+    const q = 'How many cubes long is the pencil?';
+    return { p, say: q, text: q, stage: wrap, answer: p.n, choices: choicesFor(p.n, 4, 1, 14, [p.n + p.extra]),
+      teach: `The pencil is ${p.n} cubes long. Count only the cubes under the pencil.`,
+      help: async () => { await say('Start at the end of the pencil and count the cubes under it.'); await countThrough(cubes); await say(`The pencil is ${p.n} cubes long.`); } };
+  },
+  /* ----- position words: K.G.1 ----- */
+  where(L, p) {
+    const AN = [['🐶', 'dog'], ['🐱', 'cat'], ['🐸', 'frog'], ['🦆', 'duck'], ['🐰', 'rabbit'], ['🐻', 'bear'], ['🐷', 'pig'], ['🐵', 'monkey']];
+    const cardsOf = list => list.map(i => { const c = el('span', 'sz', AN[i][0]); c.style.fontSize = '3rem'; return c; });
+    if (L === 1) {
+      if (!p) { const OB = [['📦', 'box'], ['🌳', 'tree'], ['🏠', 'house'], ['🚗', 'car']]; p = { ob: OB[rnd(0, 3)], an: shuffle([...AN.keys()]).slice(0, 4), ask: pick(['above', 'below']) }; }
+      const g = el('div', 'wgrid'), place = { 1: 0, 7: 1, 3: 2, 5: 3 };
+      for (let i = 0; i < 9; i++) { const c = el('div', 'wcell'); if (i === 4) c.textContent = p.ob[0]; else if (i in place) c.textContent = AN[p.an[place[i]]][0]; g.append(c); }
+      const ans = p.ask === 'above' ? p.an[0] : p.an[1], opts = p.opts || (p.opts = shuffle(p.an.slice()));
+      const q = `Who is ${p.ask} the ${p.ob[1]}?`;
+      return { p, kind: 'cards', cards: cardsOf(opts), say: q, text: q, stage: g, answer: String(opts.indexOf(ans)),
+        help: async () => { await say(p.ask === 'above' ? `Above means higher up, over the ${p.ob[1]}.` : `Below means lower down, under the ${p.ob[1]}.`); } };
+    }
+    if (L === 2 || L === 3) {
+      if (!p) { const row = shuffle([...AN.keys()]).slice(0, L === 2 ? 4 : 5); p = { row, i: L === 2 ? pick([0, row.length - 1]) : rnd(1, row.length - 2) }; }
+      const line = el('div', 'pat'); p.row.forEach(i => line.append(el('span', '', AN[i][0])));
+      let ans, q, others;
+      if (L === 2) { ans = p.row[p.i === 0 ? 1 : p.i - 1]; q = `Who is next to the ${AN[p.row[p.i]][1]}?`; others = p.row.filter(x => x !== p.row[p.i]); }
+      else { ans = p.row[p.i]; q = `Who is between the ${AN[p.row[p.i - 1]][1]} and the ${AN[p.row[p.i + 1]][1]}?`; others = p.row.filter(x => x !== p.row[p.i - 1] && x !== p.row[p.i + 1]); }
+      const opts = p.opts || (p.opts = shuffle(others));
+      return { p, kind: 'cards', cards: cardsOf(opts), say: q, text: q, stage: line, answer: String(opts.indexOf(ans)),
+        help: async () => { await say(L === 2 ? 'Next to means right beside it, touching in the line.' : 'Between means in the middle, with one on each side.'); } };
+    }
+    // L4: inside / outside
+    if (!p) { const an = shuffle([...AN.keys()]).slice(0, 4), ask = pick(['inside', 'outside']); p = { an, ask, one: rnd(0, 3) }; }
+    const pen = el('div', 'fence');
+    const spots = { in: [[50, 50], [38, 46], [62, 54]], out: [[10, 15], [90, 20], [12, 85], [88, 82]] };
+    const inside = p.ask === 'inside' ? [p.one] : [0, 1, 2, 3].filter(i => i !== p.one);
+    let ii = 0, oi = 0;
+    p.an.forEach((a, i) => { const isIn = inside.includes(i), [x, y] = isIn ? spots.in[ii++] : spots.out[oi++]; const s = el('span', 'fan', AN[a][0]); s.style.left = x + '%'; s.style.top = y + '%'; pen.append(s); });
+    const opts = p.opts || (p.opts = shuffle(p.an.slice()));
+    const q = `Who is ${p.ask} the fence?`;
+    return { p, kind: 'cards', cards: cardsOf(opts), say: q, text: q, stage: pen, answer: String(opts.indexOf(p.an[p.one])),
+      help: async () => { await say(p.ask === 'inside' ? 'Inside means in the fence, surrounded by it.' : 'Outside means out of the fence.'); } };
+  },
+  /* ----- data: K.MD.3, 1.MD.4 ----- */
+  graphs(L, p) {
+    const KINDS = [['🍎', 'apples', 'apple'], ['🍌', 'bananas', 'banana'], ['🍇', 'grapes', 'grape'], ['🍓', 'strawberries', 'strawberry'], ['🍊', 'oranges', 'orange']];
+    if (L === 1) {
+      if (!p) { const ks = shuffle([0, 1, 2, 3, 4]).slice(0, rnd(2, 3)), counts = ks.map(() => rnd(1, 4)); p = { ks, counts, ask: rnd(0, ks.length - 1), seed: rnd(0, 9999) }; }
+      const items = []; p.ks.forEach((k, j) => { for (let i = 0; i < p.counts[j]; i++) items.push(k); });
+      const order = seededShuffle(items.map((_, i) => i), p.seed);
+      const box = scatterBox(order.map(i => KINDS[items[i]][0]), p.seed);
+      const want = KINDS[p.ks[p.ask]], n = p.counts[p.ask];
+      const q = `Sort them in your head. How many ${want[1]} are there?`;
+      return { p, say: q, text: `How many ${want[1]}?`, stage: box, answer: n, choices: choicesFor(n, 4, 0, 10, [items.length]),
+        help: async () => { await say(`Count only the ${want[1]}.`); await countThrough([...box.querySelectorAll('.obj')].filter(o => o.textContent === want[0])); await say(`${n} ${n === 1 ? want[2] : want[1]}.`); } };
+    }
+    if (L === 3) {
+      p = p || { n: rnd(3, 19) };
+      const t = el('div', 'tally'); t.innerHTML = tallySVG(p.n);
+      const fives = Math.floor(p.n / 5), ones = p.n % 5;
+      return { p, say: 'What number do the tally marks show?', text: 'What number do the tally marks show?', stage: stack(t), answer: p.n, choices: choicesFor(p.n, 4, 1, 25, [p.n + 1, p.n - 1, fives + ones]),
+        teach: 'Each bundle with a line across is 5.',
+        help: async () => { const steps = []; for (let i = 1; i <= fives; i++) steps.push(5 * i); await say(`Each bundle is 5.${fives ? ' Count by 5s: ' + steps.join(', ') + '.' : ''} Then count on the single marks.${ones ? ' ' + [...Array(ones)].map((_, i) => 5 * fives + i + 1).join(', ') + '.' : ''}`); await say(`${p.n}!`); } };
+    }
+    // L2 and L4: picture graph with three rows
+    if (!p) {
+      const ks = shuffle([0, 1, 2, 3, 4]).slice(0, 3); let counts;
+      do { counts = ks.map(() => rnd(1, 6)); } while (new Set(counts).size < 3);
+      const kinds = L === 2 ? ['how', 'most', 'fewest'] : ['more', 'all', 'more'];
+      const ask = pick(kinds), a = rnd(0, 2); let b; do { b = rnd(0, 2); } while (b === a);
+      p = { ks, counts, ask, a: counts[a] >= counts[b] ? a : b, b: counts[a] >= counts[b] ? b : a };
+    }
+    const g = el('div', 'pgraph');
+    p.ks.forEach((k, j) => { const r = el('div', 'prow'); r.append(el('span', 'plabel', KINDS[k][0])); for (let i = 0; i < 6; i++) { const c = el('span', 'pcell bn' + (i < p.counts[j] ? ' full' : ''), i < p.counts[j] ? KINDS[k][0] : ''); r.append(c); } g.append(r); });
+    const name = j => KINDS[p.ks[j]][1];
+    const rowCells = j => [...g.children[j].querySelectorAll('.pcell.full')];
+    if (p.ask === 'most' || p.ask === 'fewest') {
+      const target = p.ask === 'most' ? p.counts.indexOf(Math.max(...p.counts)) : p.counts.indexOf(Math.min(...p.counts));
+      const cards = p.ks.map(k => { const c = el('span', 'sz', KINDS[k][0]); c.style.fontSize = '3rem'; return c; });
+      const q = `Which fruit has the ${p.ask}?`;
+      return { p, kind: 'cards', cards, say: q, text: q, stage: g, answer: String(target),
+        help: async () => { await say(`Look for the ${p.ask === 'most' ? 'longest' : 'shortest'} row.`); } };
+    }
+    if (p.ask === 'how') {
+      const j = p.a, q = `How many ${name(j)} are on the graph?`;
+      return { p, say: q, text: q, stage: g, answer: p.counts[j], choices: choicesFor(p.counts[j], 4, 0, 8),
+        help: async () => { await countThrough(rowCells(j)); } };
+    }
+    if (p.ask === 'all') {
+      const tot = sum(p.counts), q = 'How many fruits are there in all?';
+      return { p, say: q, text: q, stage: g, answer: tot, choices: choicesFor(tot, 4, 1, 25, [tot + 1, tot - 1]),
+        teach: `${p.counts.join(' plus ')} is ${tot}.`,
+        help: async () => { await say('Count every fruit on the graph.'); await countThrough([0, 1, 2].flatMap(rowCells)); } };
+    }
+    const d = p.counts[p.a] - p.counts[p.b], q = `How many more ${name(p.a)} than ${name(p.b)}?`;
+    return { p, say: q, text: q, stage: g, answer: d, choices: choicesFor(d, 4, 0, 8, [p.counts[p.a], p.counts[p.a] + p.counts[p.b]]),
+      teach: `${p.counts[p.a]} take away ${p.counts[p.b]} is ${d}.`,
+      help: async () => { await say(`Match them up. Count the extra ${name(p.a)}.`); await countThrough(rowCells(p.a).slice(p.counts[p.b])); } };
+  },
+  /* ----- the equal sign and properties: 1.OA.2, 1.OA.3, 1.OA.7 ----- */
+  equal(L, p) {
+    const tf = t => { const c = el('span', 'tf', t); return c; };
+    const words = parts => parts.map(t => t === '+' ? 'plus' : t === '−' ? 'minus' : t === '=' ? 'equals' : t).join(' ');
+    if (L === 1 || L === 2) {
+      if (!p) {
+        const truth = Math.random() < .5;
+        if (L === 1) { const a = rnd(1, 9), b = rnd(1, 10 - a), c = a + b + (truth ? 0 : pick([-1, 1, 2])); p = { parts: [a, '+', b, '=', c], truth, l: a + b, r: c }; }
+        else {
+          const kind = pick(['split', 'split', 'minus', 'swap', 'same']);
+          if (kind === 'split') { const s = rnd(4, 12), a = rnd(1, s - 1), r = truth ? s : s + pick([-1, 1]), c = rnd(1, r - 1); p = { parts: [a, '+', s - a, '=', c, '+', r - c], truth: s === r, l: s, r }; }
+          else if (kind === 'minus') { const n = rnd(3, 9), k = truth ? 1 : 2; p = { parts: [n, '=', n + 1, '−', k], truth: k === 1, l: n, r: n + 1 - k }; }
+          else if (kind === 'swap') { const a = rnd(2, 9), b = rnd(2, 9); p = { parts: [a, '+', b, '=', b, '+', a], truth: true, l: a + b, r: a + b }; }
+          else { const n = rnd(2, 12); p = { parts: [n, '=', truth ? n : n + 1], truth, l: n, r: truth ? n : n + 1 }; }
+        }
+      }
+      const q = 'Is this true or false?';
+      return { p, kind: 'cards', cards: [tf('True'), tf('False')], say: `Is this true or false? ${words(p.parts)}.`, text: q, stage: stack(eq(p.parts)), answer: p.truth ? '0' : '1',
+        teach: 'The equal sign means both sides are the same amount.',
+        help: async () => { await say(`Work out each side. One side is ${p.l}. The other side is ${p.r}. ${p.l === p.r ? 'They are the same, so it is true.' : 'They are not the same, so it is false.'}`); } };
+    }
+    if (L === 3) {
+      if (!p) { const a = rnd(2, 9), b = rnd(2, 9); p = { a, b: b === a ? b + 1 : b, form: pick(['value', 'which']) }; }
+      const { a, b } = p, s = a + b;
+      if (p.form === 'value') {
+        const q = `${a} plus ${b} is ${s}. So what is ${b} plus ${a}?`;
+        return { p, say: q, text: q, stage: stack(eq([a, '+', b, '=', s]), eq([b, '+', a, '=', '?'])), answer: s, choices: choicesFor(s, 4, 0, 20, [s + 1, s - 1, Math.abs(a - b)]),
+          teach: 'Switching the order does not change the answer.',
+          help: async () => { await say(`It's the same numbers in a different order, so it's the same answer: ${s}.`); } };
+      }
+      const opts = p.opts || (p.opts = shuffle([[b, '+', a], [a, '+', b + 1], [Math.max(a, b), '−', Math.min(a, b)], [a, '+', b - 1]].map(x => x.join(' '))));
+      const right = `${b} + ${a}`;
+      const q = `Which one is the same as ${a} plus ${b}?`;
+      return { p, kind: 'cards', cards: opts.map(t => tf(t)), say: q, text: `Which is the same as ${a} + ${b}?`, stage: stack(eq([a, '+', b])), answer: String(opts.indexOf(right)),
+        teach: 'Switching the order does not change the answer.',
+        help: async () => { await say(`Look for the same numbers, ${a} and ${b}, added in the other order.`); } };
+    }
+    // L4: three addends (1.OA.2) with a pair that makes ten
+    if (!p) { const x = rnd(1, 9), y = 10 - x, z = rnd(1, 9); p = { nums: shuffle([x, y, z]), pair: [x, y], z }; }
+    const [n1, n2, n3] = p.nums, tot = n1 + n2 + n3;
+    const q = `What is ${n1} plus ${n2} plus ${n3}?`;
+    return { p, say: q, text: `What is ${n1} + ${n2} + ${n3}?`, stage: stack(eq([n1, '+', n2, '+', n3, '=', '?'])), answer: tot, choices: choicesFor(tot, 4, 0, 30, [tot + 10, tot - 1, tot + 1]),
+      teach: `${p.pair[0]} and ${p.pair[1]} make 10, and ${p.z} more is ${tot}.`,
+      help: async () => { await say(`Look for two numbers that make 10. ${p.pair[0]} and ${p.pair[1]} make 10. Then 10 and ${p.z} more is ${tot}.`); } };
+  },
+
+  /* ===== little learner track ===== */
+  lcount(L, p) {
+    const hi = [3, 5, 10][L - 1];
+    p = p || { n: rnd(1, hi), t: rnd(0, THINGS.length - 1) };
+    const [e, pl, sg] = THINGS[p.t], st = objs(p.n, e);
+    return { p, say: `How many ${pl}? Let's count!`, text: `How many ${pl}?`, stage: st, answer: p.n, dots: L <= 2,
+      choices: choicesFor(p.n, L === 1 ? 2 : 3, 1, hi),
+      help: async () => { await countThrough(st.querySelectorAll('.obj')); await say(`${p.n}! ${p.n} ${p.n === 1 ? sg : pl}!`); } };
+  },
+  lnum(L, p) {
+    const hi = [3, 5, 10][L - 1];
+    p = p || { n: rnd(1, hi) };
+    const n = p.n, st = stack(el('div', 'listen', '?'));
+    return { p, say: `Find the number ${n}!`, text: 'Find the number you hear.', stage: st, answer: n,
+      choices: choicesFor(n, L === 1 ? 2 : 3, 1, hi),
+      help: async () => {
+        const dots = objs(n, '🔵'); st.replaceChildren(dots);
+        await countThrough(dots.querySelectorAll('.obj'));
+        await say(`This is how ${n} looks. Find ${n}!`);
+      } };
+  },
+  lshape(L, p) {
+    const pool = [['circle', 'square', 'triangle'], ['circle', 'square', 'triangle', 'star', 'heart'], Object.keys(SHAPES)][L - 1];
+    if (!p) {
+      const target = pick(pool), n = L === 1 ? 2 : 3;
+      const opts = shuffle([target, ...shuffle(pool.filter(s => s !== target)).slice(0, n - 1)]);
+      p = { target, opts, cols: shuffle(SHAPE_COLORS.slice()) };
+    }
+    const cards = p.opts.map((s, i) => shapeEl(s, p.cols[i % p.cols.length]));
+    const answer = String(p.opts.indexOf(p.target));
+    return { p, kind: 'cards', cards, say: `Find the ${p.target}!`, text: `Find the ${p.target}!`, stage: stack(el('div', 'listen', '?')), answer,
+      help: async () => { await say(SHAPES[p.target][1]); } };
+  },
+  lsize(L, p) {
+    if (!p) {
+      const t = rnd(0, THINGS.length - 1);
+      if (L === 3) p = { t, sizes: shuffle([1.6, 3, 5]), ask: Math.random() < .5 ? 'big' : 'small' };
+      else p = { t, sizes: shuffle([1.8, 5]), ask: L === 1 ? 'big' : (Math.random() < .5 ? 'big' : 'small') };
+    }
+    const e = THINGS[p.t][0];
+    const cards = p.sizes.map(s => { const x = el('span', 'sz', e); x.style.fontSize = s + 'rem'; return x; });
+    const target = p.ask === 'big' ? Math.max(...p.sizes) : Math.min(...p.sizes);
+    const word = L === 3 ? (p.ask === 'big' ? 'biggest' : 'smallest') : (p.ask === 'big' ? 'big' : 'small');
+    const q = L === 3 ? `Which one is the ${word}?` : `Which one is ${word}?`;
+    return { p, kind: 'cards', cards, say: q, text: q, stage: stack(el('div', 'listen', p.ask === 'big' ? '🐘' : '🐭')), answer: String(p.sizes.indexOf(target)),
+      help: async () => { await say(p.ask === 'big' ? 'Big like an elephant! Look for the one that takes up the most room.' : 'Small like a mouse! Look for the tiny one.'); } };
+  },
+  lmatch(L, p) {
+    const hi = L === 1 ? 3 : 5;
+    if (!p) {
+      const n = rnd(1, hi), others = shuffle([...Array(hi).keys()].map(i => i + 1).filter(x => x !== n && Math.abs(x - n) >= (L === 1 ? 1 : 1)));
+      p = { n, t: rnd(0, THINGS.length - 1), opts: shuffle([n, ...others.slice(0, L === 1 ? 1 : 2)]) };
+    }
+    const [e, pl] = THINGS[p.t], st = objs(p.n, e);
+    const cards = p.opts.map(c => objs(c, e));
+    return { p, kind: 'cards', cards, say: `Find the same number of ${pl}!`, text: 'Find the same amount!', stage: st, answer: String(p.opts.indexOf(p.n)),
+      help: async () => { await countThrough(st.querySelectorAll('.obj')); await say(`Find the one with ${p.n}!`); } };
+  },
+  lmore(L, p) {
+    if (!p) {
+      const hi = L === 1 ? 4 : 6; let a, b;
+      do { a = rnd(1, hi); b = rnd(1, hi); } while (a === b || (L === 1 && Math.abs(a - b) < 2));
+      p = { a, b, t: rnd(0, THINGS.length - 1) };
+    }
+    const { a, b } = p, [e, pl] = THINGS[p.t], cards = [objs(a, e), objs(b, e)];
+    return { p, kind: 'cards', cards, say: `Which side has more ${pl}?`, text: `Which has more?`, stage: stack(el('div', 'listen', '⚖️')), answer: a > b ? '0' : '1',
+      help: async () => {
+        await countThrough(cards[0].querySelectorAll('.obj'));
+        await countThrough(cards[1].querySelectorAll('.obj'));
+        await say(`${Math.max(a, b)} is more!`);
+      } };
+  },
+  lpattern(L, p) {
+    if (!p) {
+      const items = shuffle(PAT.slice()).slice(0, 3);
+      const unit = L === 1 ? [0, 1] : L === 2 ? (Math.random() < .5 ? [0, 0, 1] : [0, 1, 1]) : [0, 1, 2];
+      const shown = unit.length * 2 + rnd(0, unit.length - 1);
+      p = { items: items.map(x => PAT.indexOf(x)), unit, shown };
+    }
+    const it = p.items.map(i => PAT[i]), seq = [];
+    while (seq.length <= p.shown) seq.push(...p.unit);
+    const ansIdx = seq[p.shown];
+    const row = el('div', 'pat'), spans = [];
+    for (let i = 0; i < p.shown; i++) { const s = el('span', '', it[seq[i]][0]); spans.push(s); row.append(s); }
+    row.append(el('span', 'gap', '?'));
+    const used = [...new Set(p.unit)];
+    const opts = p.opts || (p.opts = shuffle(used.slice()));
+    const cards = opts.map(i => el('span', 'sz', it[i][0]));
+    cards.forEach(c => c.style.fontSize = '3.4rem');
+    return { p, kind: 'cards', cards, say: 'What comes next?', text: 'What comes next?', stage: row, answer: String(opts.indexOf(ansIdx)),
+      help: async () => {
+        for (let i = 0; i < spans.length; i++) { spans[i].classList.add('lit'); await say(it[seq[i]][1], 380); }
+        await say(`Next comes ${it[ansIdx][1]}!`);
+      } };
+  },
+};
+
+/* ---------- adaptive engine ---------- */
+const isUnlocked = k => { const n = SKILLS[k].needs; if (!n) return true; const s = P.skills[n[0]]; return !!s && (s.level >= n[1] || s.mastered); };
+const unlockedList = () => skillsFor(P.track).filter(isUnlocked);
+let recentSkills = [], lastKey = '';
+
+function grade(k, r) {
+  const s = P.skills[k], max = SKILLS[k].levels.length;
+  s.seen++; s.correct += r; s.hist.push(r); if (s.hist.length > 8) s.hist.shift();
+  const h = s.hist, last5 = h.slice(-5), last4 = h.slice(-4);
+  if (last5.length >= 5 && sum(last5) >= 4) {
+    if (s.level < max) { s.level++; s.hist = []; return 'up'; }
+    if (!s.mastered) { s.mastered = true; s.hist = []; return 'master'; }
+  } else if (last4.length >= 4 && sum(last4) <= 1) {
+    if (s.level > 1) { s.level--; s.hist = []; s.mastered = false; return 'down'; }
+  }
+  return null;
+}
+
+function chooseSkill() {
+  const list = unlockedList(), tail = recentSkills.slice(-2);
+  const weights = list.map(k => {
+    const s = P.skills[k];
+    if (tail.length === 2 && tail[0] === k && tail[1] === k && list.length > 1) return 0;
+    let w = s.mastered ? .6 : 2.5;
+    if (s.seen < 6) w += 2;                          // newly opened games show up more
+    if (!s.mastered) w *= SKILLS[k].focus || 1;      // skills a grown-up asked us to focus on
+    const acc = s.hist.length >= 3 ? sum(s.hist) / s.hist.length : 1;
+    if (acc < .5) w *= .7;                            // struggling: still practise, but mix in wins
+    return w;
+  });
+  let r = Math.random() * sum(weights);
+  for (let i = 0; i < list.length; i++) { r -= weights[i]; if (r <= 0) return list[i]; }
+  return list[0];
+}
+
+function nextQuestion() {
+  if (M) return themeQuestion();
+  const di = P.review.findIndex(x => x.due <= P.total && isUnlocked(x.skill));
+  if (di >= 0) {
+    const r = P.review.splice(di, 1)[0];
+    try { const q = GEN[r.skill](r.level, r.p); return Object.assign(q, { skill: r.skill, level: r.level, review: true }); } catch (e) {}
+  }
+  const k = chooseSkill(), L = P.skills[k].level;
+  let q;
+  for (let i = 0; i < 4; i++) { q = GEN[k](L); if (k + JSON.stringify(q.p) !== lastKey) break; }
+  return Object.assign(q, { skill: k, level: L });
+}
+
+/* ---------- bonus-mission artwork (original drawings, inline SVG) ---------- */
+const ART = {
+  // Electricity Sheriffs: cowboy hat, eye mask, mustache, lightning star on the chest.
+  sheriff(c) {
+    return `<svg viewBox="0 0 120 120" aria-hidden="true">
+      <path d="M14 120 C14 96 34 86 60 86 C86 86 106 96 106 120Z" fill="${c}"/>
+      <polygon points="60,94 64,103 74,103 66,109 69,118 60,112 51,118 54,109 46,103 56,103" fill="#f2c230" stroke="#b88a10" stroke-width="1.5"/>
+      <circle cx="60" cy="64" r="25" fill="#f3c9a0"/>
+      <rect x="33" y="53" width="54" height="15" rx="7.5" fill="${c}"/>
+      <circle cx="49" cy="60.5" r="5" fill="#fff"/><circle cx="71" cy="60.5" r="5" fill="#fff"/>
+      <circle cx="50" cy="61" r="2.4" fill="#1b1b1b"/><circle cx="72" cy="61" r="2.4" fill="#1b1b1b"/>
+      <path d="M48 74 Q54 69 60 73 Q66 69 72 74 Q66 77 60 75 Q54 77 48 74Z" fill="#6b3d10"/>
+      <path d="M52 80 Q60 87 68 80" stroke="#1b1b1b" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <ellipse cx="60" cy="42" rx="46" ry="8" fill="${c}"/><ellipse cx="60" cy="42" rx="46" ry="8" fill="rgba(0,0,0,.2)"/>
+      <path d="M37 42 C36 12 50 16 60 23 C70 16 84 12 83 42Z" fill="${c}"/>
+      <rect x="37" y="33" width="46" height="6" fill="#2b2b2b"/>
+      <polygon points="62,30 55,37 60,37 57,43 65,35 60,35 63,30" fill="#f2c230"/>
+    </svg>`;
+  },
+  // Hop Squad: crime-fighting bunnies in work hats.
+  bunny(hat, hc, fur = '#f4f1ea', inner = '#f5b8c8') {
+    const hats = {
+      cap: `<path d="M30 48 C32 24 88 24 90 48Z" fill="${hc}"/><path d="M25 49 Q60 58 95 49 L95 54 Q60 63 25 54Z" fill="#1b2747"/><circle cx="60" cy="37" r="6" fill="#f2c230" stroke="#b88a10" stroke-width="1.5"/>`,
+      fire: `<path d="M28 50 C28 20 92 20 92 50Z" fill="${hc}"/><ellipse cx="60" cy="50" rx="40" ry="7" fill="#9e1d1d"/><rect x="51" y="27" width="18" height="15" rx="3" fill="#f2c230" stroke="#b88a10" stroke-width="1.5"/>`,
+      hard: `<path d="M30 50 C30 22 90 22 90 50Z" fill="${hc}"/><rect x="25" y="47" width="70" height="7" rx="3.5" fill="#c99a00"/><rect x="56" y="24" width="8" height="24" rx="3" fill="rgba(255,255,255,.45)"/>`,
+      pilot: `<path d="M30 52 C30 22 90 22 90 52Z" fill="${hc}"/><circle cx="47" cy="42" r="9" fill="#a9dcff" stroke="#3b3b3b" stroke-width="3"/><circle cx="73" cy="42" r="9" fill="#a9dcff" stroke="#3b3b3b" stroke-width="3"/><path d="M56 42 H64" stroke="#3b3b3b" stroke-width="3"/>`,
+    };
+    return `<svg viewBox="0 0 120 120" aria-hidden="true">
+      <ellipse cx="45" cy="26" rx="10" ry="25" transform="rotate(-8 45 26)" fill="${fur}"/><ellipse cx="45" cy="28" rx="5" ry="18" transform="rotate(-8 45 28)" fill="${inner}"/>
+      <ellipse cx="75" cy="26" rx="10" ry="25" transform="rotate(8 75 26)" fill="${fur}"/><ellipse cx="75" cy="28" rx="5" ry="18" transform="rotate(8 75 28)" fill="${inner}"/>
+      <ellipse cx="60" cy="73" rx="31" ry="29" fill="${fur}" stroke="rgba(0,0,0,.12)" stroke-width="2"/>
+      <circle cx="48" cy="70" r="5.5" fill="#1b1b1b"/><circle cx="72" cy="70" r="5.5" fill="#1b1b1b"/>
+      <circle cx="50" cy="68" r="1.8" fill="#fff"/><circle cx="74" cy="68" r="1.8" fill="#fff"/>
+      <polygon points="55,79 65,79 60,85" fill="#f07c9a"/>
+      <path d="M60 85 Q54 90 50 87 M60 85 Q66 90 70 87" stroke="#1b1b1b" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <rect x="55" y="88" width="10" height="9" rx="2" fill="#fff" stroke="#c9c2b6" stroke-width="1.2"/><path d="M60 88 V97" stroke="#c9c2b6" stroke-width="1.2"/>
+      <path d="M44 83 H28 M44 87 L30 91 M76 83 H92 M76 87 L90 91" stroke="rgba(0,0,0,.35)" stroke-width="1.5" stroke-linecap="round"/>
+      <circle cx="40" cy="80" r="4" fill="${inner}" opacity=".6"/><circle cx="80" cy="80" r="4" fill="${inner}" opacity=".6"/>
+      <rect x="37" y="101" width="46" height="8" rx="4" fill="${hc}"/><circle cx="60" cy="109" r="7" fill="#f2c230" stroke="#b88a10" stroke-width="2"/>
+      ${hats[hat]}
+    </svg>`;
+  },
+  // Ant Team: little ants in eye masks and capes.
+  ant(c, mask) {
+    const legs = ['M50 84 Q36 80 28 88', 'M50 90 Q34 94 28 104', 'M52 96 Q42 106 40 116'];
+    const L = legs.map(d => `<path d="${d}"/><path d="${d}" transform="translate(120 0) scale(-1 1)"/>`).join('');
+    return `<svg viewBox="0 0 120 120" aria-hidden="true">
+      <path d="M44 80 Q60 74 76 80 L86 118 L34 118Z" fill="${mask}"/>
+      <g fill="none" stroke="#2a1d16" stroke-width="4" stroke-linecap="round">${L}</g>
+      <ellipse cx="60" cy="104" rx="16" ry="13" fill="${c}"/>
+      <ellipse cx="60" cy="86" rx="11" ry="9" fill="${c}"/>
+      <path d="M50 30 Q42 10 32 8 M70 30 Q78 10 88 8" stroke="#2a1d16" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+      <circle cx="32" cy="8" r="5" fill="${mask}"/><circle cx="88" cy="8" r="5" fill="${mask}"/>
+      <circle cx="60" cy="50" r="25" fill="${c}"/>
+      <rect x="35" y="40" width="50" height="16" rx="8" fill="${mask}"/>
+      <ellipse cx="50" cy="48" rx="7" ry="8" fill="#fff"/><ellipse cx="70" cy="48" rx="7" ry="8" fill="#fff"/>
+      <circle cx="51" cy="49" r="3.3" fill="#1b1b1b"/><circle cx="69" cy="49" r="3.3" fill="#1b1b1b"/>
+      <path d="M51 63 Q60 70 69 63" stroke="#1b1b1b" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    </svg>`;
+  },
+  coin() {
+    return `<svg viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="54" fill="#e3a91a"/><circle cx="60" cy="60" r="45" fill="#f7cb3c" stroke="#fff3c2" stroke-width="3"/>
+      <polygon points="66,18 36,66 57,66 49,103 84,51 63,51 71,18" fill="#fff" stroke="#c98a00" stroke-width="3" stroke-linejoin="round"/></svg>`;
+  },
+  sheriffStar() {
+    return `<svg viewBox="0 0 120 120" aria-hidden="true"><polygon points="60,4 74,40 114,42 82,66 94,106 60,84 26,106 38,66 6,42 46,40" fill="#f2c230" stroke="#b88a10" stroke-width="4" stroke-linejoin="round"/>
+      <polygon points="64,36 48,64 59,64 54,86 74,56 63,56 69,36" fill="#fff" stroke="#c98a00" stroke-width="2" stroke-linejoin="round"/></svg>`;
+  },
+  battery() {
+    return `<svg viewBox="0 0 120 120" aria-hidden="true"><rect x="50" y="10" width="20" height="10" rx="3" fill="#8a8f98"/><rect x="32" y="18" width="56" height="94" rx="10" fill="#2fa84f"/><rect x="32" y="70" width="56" height="42" rx="10" fill="#1f7a39"/>
+      <path d="M60 34 V54 M50 44 H70" stroke="#fff" stroke-width="7" stroke-linecap="round"/></svg>`;
+  },
+  carrot() {
+    return `<svg viewBox="0 0 120 120" aria-hidden="true"><path d="M60 30 C72 18 84 14 92 8 M60 30 C58 16 60 8 66 2 M60 30 C48 20 36 18 30 12" stroke="#2fa84f" stroke-width="7" fill="none" stroke-linecap="round"/>
+      <path d="M42 34 C52 26 70 26 80 34 L64 112 C62 118 58 118 56 112Z" fill="#f28a1f"/><path d="M50 50 H60 M54 66 H64 M56 82 H62" stroke="#c4610c" stroke-width="3" stroke-linecap="round"/></svg>`;
+  },
+  carrotBadge() {
+    return `<svg viewBox="0 0 120 120" aria-hidden="true"><path d="M60 6 L104 22 V58 C104 86 84 104 60 114 C36 104 16 86 16 58 V22Z" fill="#f2c230"/>
+      <path d="M60 15 L96 28 V58 C96 81 80 96 60 105 C40 96 24 81 24 58 V28Z" fill="#2b6fd6"/>
+      <path d="M60 40 C66 32 72 30 76 26 M60 40 C58 32 60 28 63 24" stroke="#5fd17a" stroke-width="5" fill="none" stroke-linecap="round"/>
+      <path d="M50 42 C56 38 66 38 70 42 L62 88 C61 92 59 92 58 88Z" fill="#f28a1f"/></svg>`;
+  },
+  leafMedal() {
+    return `<svg viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="54" fill="#e3a91a"/><circle cx="60" cy="60" r="45" fill="#2fa84f" stroke="#fff3c2" stroke-width="3"/>
+      <path d="M36 82 C36 50 58 32 88 32 C88 62 70 84 36 82Z" fill="#9be07a"/><path d="M38 80 L80 40" stroke="#2f7a33" stroke-width="4" stroke-linecap="round"/></svg>`;
+  },
+};
+const SHERIFFS = [['Sheriff Sparky', '#f2c230'], ['Deputy Volt', '#2b6fd6'], ['Marshal Amp', '#d93636'], ['Deputy Ohm', '#2fa84f'], ['Lady Lightbulb', '#f06fa8'], ['Captain Kilowatt', '#2b2b33']];
+// Hop Squad bunnies: [name, him/her, hat, hat color, fur, inner ear]
+const BUNNIES = [['Captain Carrot', 'him', 'cap', '#2b5bd6'], ['Fireball Fluff', 'her', 'fire', '#d93636', '#f4f1ea'], ['Wings McFluff', 'her', 'pilot', '#f06fa8', '#c48f5a', '#f2c2a8'],
+  ['Digger Bun', 'him', 'hard', '#f2c230', '#b9b4ad', '#f0b8c4'], ['Recycle Ruby', 'her', 'cap', '#2fa84f', '#8a6a4a', '#f2c2a8'], ['Splashy Hops', 'him', 'pilot', '#ff8a2a', '#4a4545', '#e89aaa']];
+const ANTS = [['Captain Crumb', '#c0392b', '#2b6fd6'], ['Zippy', '#7a4a2a', '#f2c230'], ['Tiny Tony', '#2b2b33', '#d93636'], ['Agent Antonia', '#8a4fd6', '#2fa84f']];
+const bunnyArt = b => ART.bunny(b[2], b[3], b[4], b[5]);
+const THEME_ART = {
+  sheriffs: { hero: () => ART.sheriff(pick(SHERIFFS)[1]), badge: ART.sheriffStar, card: () => [0, 1, 2].map(i => ART.sheriff(SHERIFFS[i][1])) },
+  bunnies: { hero: () => bunnyArt(pick(BUNNIES)), badge: ART.carrotBadge, card: () => [0, 1, 2].map(i => bunnyArt(BUNNIES[i])) },
+  ants: { hero: () => { const a = pick(ANTS); return ART.ant(a[1], a[2]); }, badge: ART.leafMedal, card: () => [0, 1, 3].map(i => ART.ant(ANTS[i][1], ANTS[i][2])) },
+};
+function artEl(svg, cls) { const s = el('span', 'art ' + (cls || '')); s.innerHTML = svg; return s; }
+
+/* ---------- bonus missions (themed puzzle modes, big kid track) ---------- */
+const THEMES = {
+  sheriffs: { name: 'Electricity Sheriffs', tag: 'Keeping the town lit up', steps: 6,
+    rewardName: 'sheriff star', start: 'Saddle up and light up! Blackout Bart turned off all the lights in town. Solve the puzzles to switch them back on!', win: 'Yee-haw! The town is lit up again!',
+    praise: ['Shockingly good!', 'Yee-haw-volts!', 'Electrifying!', 'Watt a great answer!', 'You light up the town!'], boss: [['coin', 'sheriff bolt'], ['battery', 'battery']] },
+  bunnies: { name: 'Hop Squad', tag: 'Crime-fighting bunnies', steps: 6,
+    rewardName: 'carrot badge', start: 'Ears up! The Sneaky Weasel is up to no good. The Hop Squad needs your help to crack the case!', win: 'Case closed! Carrots for everyone!',
+    praise: ['Hop-tastic!', 'Ears-cellent!', 'Some-bunny is very smart!', 'Carrot-ific!', 'Case cracked!'], boss: [['carrot', 'carrot'], ['carrotBadge', 'badge']] },
+  ants: { name: 'Ant Team', tag: 'Small heroes, big brains', steps: 6,
+    rewardName: 'leaf medal', start: 'Antennas up! The Grumpy Grasshopper is ruining the picnic. The Ant Team needs your help!', win: 'Picnic saved! Crumbs for everyone!',
+    praise: ['Antenna sense says yes!', 'Ant-tastic!', 'Bril-ANT!', 'Small but mighty!', 'Sweet as sugar!'], boss: [['ant', 'ant'], ['leafMedal', 'leaf']] },
+};
+let M = null;   // current bonus mode, or null for the regular pond
+const two = a => { const s = shuffle(a.slice()); return [s[0], s[1]]; };
+function tier() {
+  const s = P.skills; let t = 1;
+  if ((s.facts && s.facts.level >= 2) || (s.story && s.story.level >= 3)) t = 2;
+  if (s.tens && s.tens.level >= 2) t = 3;
+  return t;
+}
+function addPair(t) {
+  let a, b;
+  if (t === 1) do { a = rnd(1, 8); b = rnd(1, 8); } while (a + b > 10);
+  else if (t === 2) do { a = rnd(3, 9); b = rnd(3, 9); } while (a + b <= 10);
+  else { a = 10 * rnd(1, 5) + rnd(0, 9); b = pick([10, 20, 30, rnd(3, 9)]); }
+  return [a, b];
+}
+function subPair(t) {
+  let c, b;
+  if (t === 1) { c = rnd(4, 10); b = rnd(1, c - 1); }
+  else if (t === 2) { c = rnd(11, 18); b = rnd(c - 9, 9); }
+  else { c = 10 * rnd(4, 9) + rnd(0, 9); b = 10 * rnd(1, 3); }
+  return [c, b];
+}
+// A word problem with an arithmetic answer. kind: add | sub | cmp | miss (b + ? = a)
+function tArith(skill, text, kind, a, b, e) {
+  const ans = kind === 'add' ? a + b : a - b;
+  const parts = kind === 'add' ? [a, '+', b, '=', ans] : kind === 'miss' ? [b, '+', '?', '=', a] : [a, '−', b, '=', ans];
+  const shown = parts.map(x => x === '?' ? ans : x).join(' ');
+  return { skill, say: text, text, stage: stack(el('div', 'listen', e)), answer: ans,
+    choices: choicesFor(ans, 4, 0, 150, [ans + 10, ans - 10, kind === 'add' ? ans + 1 : a + b]),
+    teach: shown,
+    help: async () => {
+      const st = $('#stage').firstChild;
+      if (a <= 20 && b <= 20) {
+        if (kind === 'add') { const g = el('div', 'objs'), A = objs(a, e), B = objs(b, e); g.append(A, el('span', 'plus', '+'), B); st.replaceChildren(g); await say(`Start at ${a} and count on ${b}.`); await countThrough([...B.querySelectorAll('.obj')], a + 1); }
+        else if (kind === 'miss') { const g = el('div', 'objs'), A = objs(b, e), B = objs(ans, '⚪'); g.append(A, B); st.replaceChildren(g); await say(`We have ${b}. Count up to ${a}.`); await countThrough([...B.querySelectorAll('.obj')], b + 1); }
+        else if (kind === 'cmp') { const r1 = objs(a, e), r2 = objs(b, e); st.replaceChildren(r1, r2); await say('Match them up. Count the extra ones.'); await countThrough([...r1.querySelectorAll('.obj')].slice(b)); }
+        else { const g = objs(a, e, b); st.replaceChildren(g); await sleep(1900); await say(`${b} are gone. Count what is left.`); await countThrough([...g.querySelectorAll('.obj:not(.gone)')]); }
+      } else await say(kind === 'add' ? 'Add the tens first, then the ones.' : 'Take away the tens first, then the ones.');
+      st.append(eq(parts)); await say(`${shown.replace(/−/g, 'minus').replace(/\+/g, 'plus').replace(/=/g, 'equals')}.`);
+    } };
+}
+function tSkip(skill, text, s, start, e) {
+  const seq = [0, 1, 2, 3].map(i => start + s * i), ans = start + 4 * s, nl = el('div', 'nl'), cells = [];
+  seq.forEach(v => { const c = el('div', 'cell', String(v)); cells.push(c); nl.append(c); }); nl.append(el('div', 'cell q', '?'));
+  return { skill, say: text, text, stage: stack(el('div', 'listen', e), nl), answer: ans,
+    choices: choicesFor(ans, 4, 0, 150, [ans + 1, ans - 1, ans + s]), teach: `Counting by ${s}s: ${[...seq, ans].join(', ')}.`,
+    help: async () => { for (const c of cells) { c.classList.add('lit'); await say(c.textContent, 420); } await say(`${ans}! It goes up by ${s} each time.`); } };
+}
+function tGroups(text, k, n, e) {
+  const wrap = el('div', 'objs'), parts = [];
+  for (let i = 0; i < k; i++) { const g = objs(n, e); wrap.append(g); g.firstChild.classList.add('bn'); parts.push({ el: g.firstChild, v: n }); }
+  return { skill: 'groups', say: text, text, stage: wrap, answer: k * n,
+    choices: choicesFor(k * n, 4, 1, 60, [k + n, k * n + n]), teach: `${k} groups of ${n} is ${k * n}.`,
+    help: async () => { await say(`Count by ${n}s.`); await countParts(parts); } };
+}
+function tColors(text, items) {
+  const unit = pick([[0, 1], [0, 1, 2], [0, 0, 1], [0, 1, 1]]), shownN = unit.length * 2 + rnd(0, unit.length - 1), seq = [];
+  while (seq.length <= shownN) seq.push(...unit);
+  const row = el('div', 'pat'), spans = [];
+  for (let i = 0; i < shownN; i++) { const s = el('span', '', items[seq[i]][0]); spans.push(s); row.append(s); }
+  row.append(el('span', 'gap', '?'));
+  const opts = shuffle([0, 1, 2]), cards = opts.map(i => { const c = el('span', 'sz', items[i][0]); c.style.fontSize = '3rem'; return c; });
+  return { skill: 'bpattern', kind: 'cards', cards, say: text, text, stage: row, answer: String(opts.indexOf(seq[shownN])),
+    help: async () => { for (let i = 0; i < spans.length; i++) { spans[i].classList.add('lit'); await say(items[seq[i]][1], 360); } await say(`Next comes ${items[seq[shownN]][1]}!`); } };
+}
+function tOdd(text, same, odd, why) {
+  const opts = shuffle([...shuffle(same.slice()).slice(0, 3), odd]);
+  const cards = opts.map(x => { const c = el('span', 'sz', x); c.style.fontSize = '3rem'; return c; });
+  return { skill: 'teaser', kind: 'cards', cards, say: text, text, stage: stack(el('div', 'listen', '🤔')), answer: String(opts.indexOf(odd)),
+    teach: why, help: async () => { await say(why); } };
+}
+function tRiddle(text, ans, why, e) {
+  return { skill: 'teaser', say: text, text, stage: stack(el('div', 'listen', e)), answer: ans,
+    choices: choicesFor(ans, 4, 0, 60, [ans + 2, ans - 2]), teach: why, help: async () => { await say(why); } };
+}
+function tSecret(e, nm, t) {
+  const k = t === 1 ? 2 : pick([2, 3]), a = t === 1 ? rnd(1, 5) : rnd(2, 9), parts = [];
+  for (let i = 0; i < k; i++) { if (i) parts.push('+'); parts.push(e); }
+  parts.push('=', k * a);
+  const text = `${k === 2 ? 'Two' : 'Three'} ${nm}s make ${k * a}. What number is one ${nm}?`;
+  return { skill: 'teaser', say: text, text, stage: stack(eq(parts), eq([e, '=', '?'])), answer: a,
+    choices: choicesFor(a, 4, 0, 30, [k * a]), teach: `${k} times ${a} makes ${k * a}.`,
+    help: async () => { const d = el('div', 'objs'); for (let i = 0; i < k; i++) d.append(objs(a, '🔵')); $('#stage').firstChild.append(d); await say(`Share ${k * a} into ${k} equal groups.`); await countThrough([...d.firstChild.querySelectorAll('.obj')]); } };
+}
+function tBoss(th, t) {
+  const [[k1, n1], [k2, n2]] = th.boss, e1 = { svg: ART[k1]('#d93636', '#2b6fd6') }, e2 = { svg: ART[k2]('#d93636', '#2b6fd6') }, a = rnd(t === 1 ? 1 : 3, t === 1 ? 5 : 9), b = rnd(1, t === 1 ? 5 : 9);
+  const text = `Boss puzzle! Two ${n1}s make ${2 * a}. A ${n1} and a ${n2} make ${a + b}. What number is the ${n2}?`;
+  return { skill: 'teaser', boss: true, say: text, text: text.replace('Boss puzzle! ', ''), stage: stack(eq([e1, '+', e1, '=', 2 * a]), eq([e1, '+', e2, '=', a + b]), eq([e2, '=', '?'])), answer: b,
+    choices: choicesFor(b, 4, 0, 20, [a, a + b]), teach: `${n1} is ${a}, so ${n2} is ${b}.`,
+    help: async () => { await say(`First find the ${n1}. Two ${n1}s make ${2 * a}, so one ${n1} is ${a}. Then ${a} plus what makes ${a + b}? ${b}!`); } };
+}
+const RC = [['Red', '🔴'], ['Blue', '🔵'], ['Yellow', '🟡'], ['Green', '🟢'], ['Black', '⚫'], ['Pink', '💗']];
+const TEMPLATES = {
+  sheriffs: [
+    t => { const [a, b] = addPair(t), [[s1], [s2]] = two(SHERIFFS); return tArith('story', `${s1} has ${a} batteries. ${s2} tosses over ${b} more. How many batteries does ${s1} have now?`, 'add', a, b, '🔋'); },
+    t => { const [c, b] = subPair(t); return tArith('story', `Blackout Bart switched off ${c} streetlights! The sheriffs turned ${b} back on. How many streetlights are still dark?`, 'sub', c, b, '💡'); },
+    t => { const [c, b] = subPair(t), [[s1], [s2]] = two(SHERIFFS); return tArith('story', `${s1} zapped ${c} static gremlins. ${s2} zapped ${b}. How many more did ${s1} zap?`, 'cmp', c, b, '⚡'); },
+    t => { const [c, b] = subPair(t); return tArith('facts', `The sheriffs need ${c} light bulbs for the town fair. They have ${b}. How many more light bulbs do they need?`, 'miss', c, b, '💡'); },
+    () => { const cols = shuffle(RC.slice()).slice(0, 3).map(([n, e]) => [e, n.toLowerCase()]); return tColors('The sheriffs flash their lasso lights in a pattern. Which color comes next?', cols); },
+    t => { const s = t === 1 ? pick([2, 5, 10]) : pick([5, 10]); return tSkip('bpattern', `Power up the Sparkle Lasso! Count by ${s}s. What comes next?`, s, s * rnd(t === 1 ? 0 : 2, t === 1 ? 2 : 6), '🤠'); },
+    t => { const k = rnd(2, t === 1 ? 3 : 5), n = t === 1 ? 2 : 5; return tGroups(`${k} sheriffs climb into the Giant Robot Toaster. Each one brings ${n} batteries. How many batteries in all?`, k, n, '🔋'); },
+    t => tSecret({ svg: ART.coin() }, 'sheriff bolt', t),
+  ],
+  bunnies: [
+    t => { const [a, b] = addPair(t), [[b1, him], [b2]] = two(BUNNIES); return tArith('story', `${b1} has ${a} carrots. ${b2} gives ${him} ${b} more. How many carrots does ${b1} have now?`, 'add', a, b, '🥕'); },
+    t => { const [c, b] = subPair(t), [b1] = pick(BUNNIES); return tArith('story', `The Sneaky Weasel swiped ${c} cookies from the bakery! ${b1} got ${b} back. How many cookies are still missing?`, 'sub', c, b, '🍪'); },
+    t => { const [c, b] = subPair(t), [[b1], [b2]] = two(BUNNIES); return tArith('story', `${b1} did ${c} super hops. ${b2} did ${b}. How many more hops did ${b1} do?`, 'cmp', c, b, '🐾'); },
+    t => { const [c, b] = subPair(t); return tArith('facts', `Digger Bun needs ${c} carrot traps to catch the Sneaky Weasel. He has built ${b}. How many more traps does he need?`, 'miss', c, b, '🥕'); },
+    t => { const s = t === 1 ? pick([2, 5, 10]) : pick([5, 10]); return tSkip('bpattern', `Wings McFluff flies her helicopter higher and higher by ${s}s. What comes next?`, s, s * rnd(t === 1 ? 0 : 2, t === 1 ? 2 : 6), '🚁'); },
+    t => { const k = rnd(2, t === 1 ? 3 : 4), n = t === 1 ? 2 : 4; return tGroups(`${k} bunnies get ready for a stakeout. Each bunny has ${n} ${n === 2 ? 'long ears' : 'fluffy feet'}. How many ${n === 2 ? 'ears' : 'feet'} in all?`, k, n, n === 2 ? '👂' : '🐾'); },
+    () => Math.random() < .5 ? tOdd('The Hop Squad only eats veggies! Which one is NOT a vegetable?', ['🥕', '🥦', '🌽', '🥒', '🥬'], pick(['🍩', '🧁', '🍭', '🍪']), 'The others are all vegetables. Crunchy!') : tOdd('Which one is NOT a squad vehicle?', ['🚒', '🚓', '🚑', '🚁'], pick(['🍦', '🎈', '🧸']), 'The others all go on missions!'),
+    t => tSecret({ svg: ART.carrot() }, 'carrot', t),
+  ],
+  ants: [
+    t => { const [a, b] = addPair(t); return tArith('story', `Captain Crumb carries ${a} crumbs back to the nest, then ${b} more. How many crumbs did she carry?`, 'add', a, b, '🍪'); },
+    t => { const [c, b] = subPair(t); return tArith('story', `The Grumpy Grasshopper throws ${c} pickles at the picnic! The Ant Team catches ${b} of them. How many pickles are still flying?`, 'sub', c, b, '🥒'); },
+    t => { const [c, b] = subPair(t); return tArith('story', `Zippy found ${c} sugar cubes. Tiny Tony found ${b}. How many more sugar cubes did Zippy find?`, 'cmp', c, b, '🧊'); },
+    t => { const [c, b] = subPair(t); return tArith('facts', `The Ant Team needs ${c} spaghetti strands to swing across the picnic table. They have ${b}. How many more strands do they need?`, 'miss', c, b, '🍝'); },
+    t => t === 1 ? tRiddle('An ant has 2 antennas. How many antennas do 3 ants have?', 6, 'Count by 2s: 2, 4, 6.', '🐜')
+      : t === 2 ? tRiddle('An ant has 6 legs. How many legs do 2 ants have?', 12, '6 plus 6 is 12. Double 6!', '🐜')
+      : tRiddle('Each ant has 6 legs. How many legs do 3 ants have?', 18, '6, 12, 18. That is a lot of tiny shoes!', '🐜'),
+    t => { const s = t === 1 ? pick([2, 5, 10]) : pick([5, 10]); return tSkip('bpattern', `The Ant Team climbs a giant sandwich by ${s}s. What layer comes next?`, s, s * rnd(t === 1 ? 0 : 2, t === 1 ? 2 : 6), '🥪'); },
+    t => { const k = rnd(2, t === 1 ? 3 : 5), n = t === 1 ? 2 : pick([2, 5]); return tGroups(`${k} ants each carry ${n} crumbs. How many crumbs in all?`, k, n, '🍪'); },
+    t => tSecret({ svg: ART.ant('#c0392b', '#2b6fd6') }, 'ant', t),
+  ],
+};
+let lastT = -1, missionHero = '';
+// Show the character a puzzle talks about when we can tell; otherwise a random one.
+function heroFor(text) {
+  if (M === 'sheriffs') { const s = SHERIFFS.find(([n]) => text.includes(n)); if (s) return ART.sheriff(s[1]); }
+  if (M === 'bunnies') { const b = BUNNIES.find(([n]) => text.includes(n)); if (b) return bunnyArt(b); }
+  if (M === 'ants') { const a = ANTS.find(([n]) => text.includes(n)); if (a) return ART.ant(a[1], a[2]); }
+  return THEME_ART[M].hero();
+}
+// Little learners get gentle themed versions of their own games (no boss puzzle).
+const LITTLE_THEME = {
+  bunnies: { who: BUNNIES.map(b => b[0]), e: '🥕', pl: 'carrots', noun: 'bunny' },
+  sheriffs: { who: SHERIFFS.map(s => s[0]), e: '🔋', pl: 'batteries', noun: 'sheriff' },
+  ants: { who: ANTS.map(a => a[0]), e: '🍪', pl: 'crumbs', noun: 'ant' },
+};
+function littleThemeQ() {
+  const lt = LITTLE_THEME[M], who = pick(lt.who), Who = who[0].toUpperCase() + who.slice(1), lv = k => P.skills[k].level;
+  const kinds = ['lcount', 'lnum', 'lshape', 'lsize', 'lmore', 'lpattern'].filter(k => isUnlocked(k));
+  let k; do { k = pick(kinds); } while (k === littleThemeQ.last && kinds.length > 1);
+  littleThemeQ.last = k;
+  if (k === 'lcount') {
+    const hi = [3, 5, 10][lv(k) - 1], n = rnd(1, hi), st = objs(n, lt.e), t = `How many ${lt.pl} does ${who} have? Let's count!`;
+    return { skill: k, say: t, text: t, stage: st, answer: n, dots: lv(k) <= 2, choices: choicesFor(n, lv(k) === 1 ? 2 : 3, 1, hi),
+      help: async () => { await countThrough(st.querySelectorAll('.obj')); await say(`${n}! ${who} has ${n}.`); } };
+  }
+  if (k === 'lnum') {
+    const hi = [3, 5, 10][lv(k) - 1], n = rnd(1, hi), st = stack(el('div', 'listen', '?')), t = `${Who} needs the number ${n}! Find ${n}.`;
+    return { skill: k, say: t, text: t, stage: st, answer: n, choices: choicesFor(n, lv(k) === 1 ? 2 : 3, 1, hi),
+      help: async () => { const d = objs(n, '🔵'); st.replaceChildren(d); await countThrough(d.querySelectorAll('.obj')); await say(`This is how ${n} looks. Find ${n}!`); } };
+  }
+  if (k === 'lsize') {
+    const three = lv(k) === 3, ask = lv(k) === 1 ? 'big' : pick(['big', 'small']), sizes = shuffle(three ? [44, 80, 130] : [50, 130]);
+    const hero = heroFor(who), cards = sizes.map(px => { const a = artEl(hero); a.style.width = a.style.height = px + 'px'; return a; });
+    const target = ask === 'big' ? Math.max(...sizes) : Math.min(...sizes), word = three ? (ask === 'big' ? 'biggest' : 'smallest') : ask;
+    const t = three ? `Which ${lt.noun} is the ${word}?` : `Which ${lt.noun} is ${word}?`;
+    return { skill: k, kind: 'cards', cards, say: t, text: t, stage: null, answer: String(sizes.indexOf(target)),
+      help: async () => { await say(ask === 'big' ? 'Look for the one that takes up the most room!' : 'Look for the tiny one!'); } };
+  }
+  if (k === 'lmore') {
+    let a, b; const hi = lv(k) === 1 ? 4 : 6; do { a = rnd(1, hi); b = rnd(1, hi); } while (a === b || (lv(k) === 1 && Math.abs(a - b) < 2));
+    const cards = [objs(a, lt.e), objs(b, lt.e)], t = `Which side has more ${lt.pl}?`;
+    return { skill: k, kind: 'cards', cards, say: t, text: t, stage: null, answer: a > b ? '0' : '1',
+      help: async () => { await countThrough(cards[0].querySelectorAll('.obj')); await countThrough(cards[1].querySelectorAll('.obj')); await say(`${Math.max(a, b)} is more!`); } };
+  }
+  const q = GEN[k](lv(k));
+  q.say = q.text = k === 'lshape' ? `${Who} needs a ${q.p.target}! Find the ${q.p.target}.` : `Help ${who} finish the pattern! What comes next?`;
+  q.skill = k;
+  return q;
+}
+function themeQuestion() {
+  const th = THEMES[M], t = P.track === 'big' ? tier() : 1;
+  let q;
+  if (P.track === 'little') q = littleThemeQ();
+  else if (getPad() === th.steps - 1) q = tBoss(th, t);
+  else {
+    const list = TEMPLATES[M]; let i;
+    do { i = rnd(0, list.length - 1); } while (i === lastT && list.length > 1);
+    lastT = i; q = list[i](t);
+  }
+  q.p = { theme: M, text: q.text };
+  q.noReview = true;
+  q.stage = q.stage ? stack(artEl(heroFor(q.text), 'stage-art'), q.stage) : stack(artEl(heroFor(q.text), 'stage-art'));
+  q.level = P.skills[q.skill].level;
+  return q;
+}
+
+// Progress along the pond (or the mission track) is kept separately for each mode.
+function padKey() { return M ? 'pad_' + M : 'pad'; }
+function getPad() { return (P && P[padKey()]) || 0; }
+function setPad(v) { P[padKey()] = v; }
+function pondLen() { return M ? (P.track === 'little' ? 5 : THEMES[M].steps) : TRACK[P.track].pond; }
+
+/* ---------- play loop ---------- */
+let q = null, tries = 0, busy = false;
+
+function renderQ() {
+  $('#ptext').textContent = q.text;
+  const st = $('#stage'); st.replaceChildren(); if (q.stage) st.append(q.stage);
+  const A = $('#answers'); A.replaceChildren();
+  if (q.kind === 'cards') {
+    A.className = 'answers cards'; A.style.setProperty('--n', q.cards.length);
+    q.cards.forEach((c, i) => { const b = el('button', 'ans card-ans'); b.append(c); b.dataset.v = String(i); b.setAttribute('aria-label', 'Choice ' + (i + 1)); A.append(b); });
+  } else {
+    A.className = 'answers'; A.style.setProperty('--n', q.choices.length);
+    q.choices.forEach(v => {
+      const b = el('button', 'ans', String(v)); b.dataset.v = String(v);
+      if (q.dots && v <= 10) { const m = el('span', 'mini'); for (let i = 0; i < v; i++) m.append(el('i')); b.append(m); }
+      A.append(b);
+    });
+  }
+}
+
+function ask() {
+  q = nextQuestion(); tries = 0; busy = false; q.graded = false;
+  lastKey = q.skill + JSON.stringify(q.p);
+  recentSkills.push(q.skill); if (recentSkills.length > 5) recentSkills.shift();
+  renderQ();
+  if (q.boss) { showToast('Boss puzzle!'); tone(330, .3, 'square', 0, .08); tone(440, .4, 'square', .2, .08); }
+  sayNow(q.say);
+  if (q.onShow) q.onShow();
+}
+
+$('#answers').addEventListener('click', e => { const b = e.target.closest('.ans'); if (b && !b.disabled) onAnswer(b); });
+
+async function onAnswer(b) {
+  if (busy) return;
+  const before = unlockedList();
+  if (b.dataset.v === String(q.answer)) {
+    busy = true;
+    b.classList.add('right');
+    document.querySelectorAll('#answers .ans').forEach(x => x.classList.remove('hint'));
+    let ev = null;
+    if (!q.graded) { q.graded = true; P.total++; ev = grade(q.skill, 1); }
+    chime();
+    const praise = sayNow(pick(M ? THEMES[M].praise : PRAISE[P.track]));
+    await sleep(350);
+    setPad(Math.min(pondLen(), getPad() + 1)); placeFrog(true); hopSnd();
+    save();
+    if (q.teach) { await praise; $('#ptext').textContent = q.teach; await say(q.teachSay || q.teach); }
+    else await sleep(700);
+    await announce(ev, q.skill, before);
+    if (getPad() >= pondLen()) return party();
+    await sleep(300);
+    ask();
+  } else {
+    tries++;
+    b.classList.add('wrong'); b.disabled = true; boop();
+    if (!q.graded) {
+      q.graded = true; P.total++;
+      grade(q.skill, 0);   // a run of misses quietly eases the level down
+      if (!q.noReview) P.review.push({ skill: q.skill, level: q.level, p: q.p, due: P.total + rnd(3, 5) });
+      if (P.review.length > 6) P.review.shift();
+      save();
+    }
+    if (tries > 1) { hint(); return; }
+    busy = true;
+    await sayNow(pick(OOPS[P.track]));
+    try { await q.help(); } catch (e) {}
+    hint();
+    busy = false;
+  }
+}
+function hint() { const c = [...document.querySelectorAll('#answers .ans')].find(x => x.dataset.v === String(q.answer)); if (c) c.classList.add('hint'); }
+
+async function announce(ev, k, before) {
+  const msgs = [];
+  if (ev === 'up') msgs.push([`Level up! ${SKILLS[k].levels[P.skills[k].level - 1]}`, 'Level up! You are ready for something a little harder.']);
+  if (ev === 'master') msgs.push([`${SKILLS[k].name}: all stars!`, `Wow! You are a ${SKILLS[k].name.toLowerCase()} star!`]);
+  unlockedList().filter(x => !before.includes(x)).forEach(x => msgs.push([`New game: ${SKILLS[x].name}!`, `You opened a new game: ${SKILLS[x].name}!`]));
+  for (const [t, s] of msgs) { showToast(t); chime(); await sayNow(s); await sleep(300); }
+}
+let toastTimer = 0;
+function showToast(t) { const e = $('#toast'); e.textContent = t; e.hidden = false; e.style.animation = 'none'; void e.offsetWidth; e.style.animation = ''; clearTimeout(toastTimer); toastTimer = setTimeout(() => e.hidden = true, 3200); }
+
+/* ---------- pond ---------- */
+let slots = [];
+function buildPond() {
+  const pond = $('#pond'), frog = $('#frog'), n = P ? pondLen() : 10, at = P ? getPad() : 0;
+  pond.className = 'pond' + (M ? ' th th-' + M : '');
+  frog.innerHTML = M ? `<span class="art">${missionHero || (missionHero = THEME_ART[M].hero())}</span>` : FROG;
+  pond.querySelectorAll('.slot').forEach(s => s.remove());
+  slots = [];
+  const rock = el('div', 'slot rock'); pond.insertBefore(rock, frog); slots.push(rock);
+  for (let i = 1; i <= n; i++) { const p = el('div', 'slot pad' + (i <= at ? ' done' : '') + (i === n ? ' goal' : '')); if (i === n) { p.dataset.goal = M ? '' : '🌸'; if (M) p.append(artEl(THEME_ART[M].badge(), 'goal-art')); } pond.insertBefore(p, frog); slots.push(p); }
+  pond.style.justifyContent = n < 10 ? 'space-around' : 'space-between';
+  placeFrog(false);
+}
+function placeFrog(anim) {
+  const at = P ? getPad() : 0, t = slots[at]; if (!t) return;
+  const frog = $('#frog');
+  if (!anim) frog.style.transition = 'none';
+  frog.style.left = (t.offsetLeft + t.offsetWidth / 2) + 'px';
+  slots.forEach((s, i) => s.classList.toggle('done', i > 0 && i <= at));
+  if (anim) { frog.classList.remove('hop'); void frog.offsetWidth; frog.classList.add('hop'); }
+  else { void frog.offsetWidth; frog.style.transition = ''; }
+}
+addEventListener('resize', () => placeFrog(false));
+
+/* ---------- party ---------- */
+function party() {
+  if (M) {
+    const th = THEMES[M]; P.badges[M] = (P.badges[M] || 0) + 1; setPad(0); save();
+    const n = P.badges[M];
+    $('#partyTitle').textContent = th.win;
+    $('#newFriend').replaceChildren(artEl(THEME_ART[M].badge(), 'reward-art'));
+    $('#partyText').textContent = `${P.name} earned a ${th.rewardName}! That makes ${n}.`;
+    $('#seeFriends').hidden = true; $('#again').textContent = 'Next mission';
+    $('#party').hidden = false; confetti();
+    tone(523, .2, 'triangle'); tone(659, .2, 'triangle', .15); tone(784, .2, 'triangle', .3); tone(1047, .5, 'triangle', .45);
+    sayNow(`${th.win} You earned a ${th.rewardName}!`);
+    return;
+  }
+  $('#seeFriends').hidden = false; $('#again').textContent = 'Hop again';
+  const owned = new Set(P.stickers), pool = FRIENDS.filter(f => !owned.has(f)), f = pick(pool.length ? pool : FRIENDS);
+  P.stickers.push(f); setPad(0); save();
+  $('#partyTitle').textContent = `${P.name} crossed the pond!`;
+  $('#newFriend').textContent = f;
+  $('#partyText').textContent = `A new pond friend joined you. That makes ${P.stickers.length}!`;
+  $('#party').hidden = false;
+  confetti();
+  tone(523, .2, 'triangle'); tone(659, .2, 'triangle', .15); tone(784, .2, 'triangle', .3); tone(1047, .5, 'triangle', .45);
+  sayNow(`Hooray, ${P.name}! You crossed the pond and made a new friend!`);
+}
+$('#again').addEventListener('click', () => { $('#party').hidden = true; buildPond(); ask(); });
+$('#seeFriends').addEventListener('click', () => { $('#party').hidden = true; openFriends(true); });
+
+/* ---------- pond friends book ---------- */
+let friendsResume = false;
+function openFriends(resume) {
+  if (!P) return;
+  hush(); friendsResume = !!resume;
+  const have = {}; P.stickers.forEach(f => have[f] = (have[f] || 0) + 1);
+  const found = Object.keys(have).length;
+  $('#frTitle').textContent = `${P.name}'s pond friends`;
+  $('#frCount').textContent = found ? `${found} of ${FRIENDS.length} friends found. Tap a friend to say hi!` : 'Cross the pond to find your first friend!';
+  const g = $('#fgrid'); g.replaceChildren();
+  FRIENDS.forEach(f => {
+    const b = el('button', 'friend' + (have[f] ? '' : ' locked'));
+    b.append(el('span', 'fe', f), el('small', '', have[f] ? FRIEND_NAMES[f] : '???'));
+    if (have[f] > 1) b.append(el('span', 'dup', '×' + have[f]));
+    b.onclick = () => {
+      b.classList.remove('wiggle'); void b.offsetWidth; b.classList.add('wiggle');
+      if (have[f]) { tone(660, .15, 'triangle'); sayNow(`Hi! I'm ${FRIEND_NAMES[f]}!`); }
+      else sayNow('Keep crossing the pond to find this friend!');
+    };
+    g.append(b);
+  });
+  $('#friends').hidden = false;
+  sayNow(found ? `You have ${found} pond ${found === 1 ? 'friend' : 'friends'}!` : 'Cross the pond to find your first friend!');
+}
+$('#friendsBtn').addEventListener('click', () => openFriends(false));
+$('#frClose').addEventListener('click', () => {
+  hush(); $('#friends').hidden = true;
+  if (friendsResume) { friendsResume = false; buildPond(); ask(); }
+  else if (q) sayNow(q.say);
+});
+
+function confetti() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const c = $('#confetti'), x = c.getContext('2d'); c.hidden = false;
+  const W = c.width = innerWidth * devicePixelRatio, H = c.height = innerHeight * devicePixelRatio;
+  const cs = getComputedStyle(document.documentElement);
+  const cols = ['--sun', '--berry', '--pad-done', '--water', '--frog'].map(v => cs.getPropertyValue(v).trim());
+  const bits = Array.from({ length: 140 }, () => ({ x: Math.random() * W, y: -Math.random() * H * .5, vx: (Math.random() - .5) * 4, vy: 2 + Math.random() * 5, r: Math.random() * 6, s: (6 + Math.random() * 8) * devicePixelRatio, c: pick(cols) }));
+  const t0 = performance.now();
+  (function f(t) {
+    x.clearRect(0, 0, W, H);
+    bits.forEach(b => { b.x += b.vx; b.y += b.vy * devicePixelRatio; b.r += .1; x.save(); x.translate(b.x, b.y); x.rotate(b.r); x.fillStyle = b.c; x.fillRect(-b.s / 2, -b.s / 4, b.s, b.s / 2); x.restore(); });
+    if (t - t0 < 3200) requestAnimationFrame(f); else { x.clearRect(0, 0, W, H); c.hidden = true; }
+  })(t0);
+}
+
+/* ---------- who's playing ---------- */
+function renderPicker() {
+  const box = $('#players'); box.replaceChildren();
+  $('#whoAsk').textContent = store.players.length ? "Who's playing?" : 'Add a player to start.';
+  $('#firstRun').hidden = store.players.length > 0;
+  store.players.forEach(p => {
+    const b = el('button', 'player'); b.dataset.id = p.id;
+    b.append(el('span', 'av', p.avatar), el('b', '', p.name), el('small', '', `${p.track === 'little' ? 'Little learner' : 'Big kid'} · ${p.stickers.length} pond ${p.stickers.length === 1 ? 'friend' : 'friends'}`));
+    if (p.stickers.length) { const s = el('span', '', p.stickers.slice(-6).join(' ')); s.style.fontSize = '1.3rem'; b.append(s); }
+    box.append(b);
+  });
+  if (!store.players.length) { const a = el('button', 'go', 'Add a player'); a.id = 'firstAdd'; box.append(a); }
+}
+$('#players').addEventListener('click', e => {
+  if (e.target.closest('#firstAdd')) return askGate('add');
+  const b = e.target.closest('.player'); if (b) startPlay(b.dataset.id);
+});
+function startPlay(id) {
+  P = store.players.find(p => p.id === id); if (!P) return;
+  store.current = id; save();
+  try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); ac.resume(); } catch (e) {}
+  recentSkills = []; lastKey = ''; M = null;
+  {
+    $('#start').hidden = true; $('#modeView').hidden = false; $('#home').hidden = false;
+    renderModes(); sayNow(`Hi ${P.name}! Pick a game.`);
+    return;
+  }
+  beginMode(null);
+}
+function renderModes() {
+  const box = $('#modes'); box.replaceChildren();
+  $('#modeAsk').textContent = `Pick a game, ${P.name}!`;
+  const card = (mode, av, name, sub) => {
+    const b = el('button', 'player mode' + (mode ? ' m-' + mode : '')); b.dataset.mode = mode || '';
+    let a; if (typeof av === 'string') a = el('span', 'av', av); else { a = el('span', 'av arts'); av.forEach(svg => a.append(artEl(svg))); }
+    b.append(a, el('b', '', name), el('small', '', sub)); box.append(b);
+  };
+  card(null, '🐸', 'Lily Pad', `All your games · ${P.stickers.length} pond ${P.stickers.length === 1 ? 'friend' : 'friends'}`);
+  for (const k in THEMES) { const th = THEMES[k], n = P.badges[k] || 0; card(k, THEME_ART[k].card(), th.name, `${th.tag} · ${n} ${th.rewardName}${n === 1 ? '' : 's'}`); }
+}
+$('#modes').addEventListener('click', e => { const b = e.target.closest('.mode'); if (b) beginMode(b.dataset.mode || null); });
+function beginMode(m) {
+  M = m; lastT = -1; missionHero = '';
+  $('#start').hidden = true; $('#modeView').hidden = true; $('#playView').hidden = false; $('#home').hidden = false; $('#friendsBtn').hidden = false;
+  buildPond();
+  sayNow(m ? THEMES[m].start : `Let's go, ${P.name}!`);
+  setTimeout(ask, m ? 3400 : 1300);
+}
+$('#home').addEventListener('click', () => {
+  hush(); P = null; q = null; M = null;
+  $('#modeView').hidden = true;
+  $('#playView').hidden = true; $('#start').hidden = false; $('#home').hidden = true; $('#friendsBtn').hidden = true;
+  renderPicker(); buildPond();
+});
+$('#replay').addEventListener('click', () => { if (q) sayNow(q.say); });
+
+/* ---------- grown-ups corner ---------- */
+const gb = $('#grownBtn'); let holdT = 0;
+const endHold = () => { clearTimeout(holdT); gb.classList.remove('holding'); };
+gb.addEventListener('pointerdown', e => { e.preventDefault(); gb.classList.add('holding'); holdT = setTimeout(() => { endHold(); askGate(); }, 1200); });
+['pointerup', 'pointerleave', 'pointercancel'].forEach(t => gb.addEventListener(t, endHold));
+gb.addEventListener('click', e => { if (e.detail === 0) askGate(); });
+gb.addEventListener('contextmenu', e => e.preventDefault());
+
+let gTab = null, addAge = 5, pending = null;
+// Parental gate: a grown-up types a number written out in words before settings open.
+const ONES = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'], TENS_W = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+let gateAns = 0, gateTab = null;
+function askGate(tab) {
+  hush(); gateTab = tab; gateAns = rnd(21, 99);
+  $('#gateQ').textContent = `To continue, type the number ${TENS_W[Math.floor(gateAns / 10)]}${gateAns % 10 ? '-' + ONES[gateAns % 10] : ''} in digits.`;
+  $('#gateIn').value = ''; $('#gate').hidden = false; setTimeout(() => $('#gateIn').focus(), 50);
+}
+function gateCheck() { const ok = parseInt($('#gateIn').value, 10) === gateAns; $('#gate').hidden = true; $('#gateIn').blur(); if (ok) openGrown(gateTab); }
+$('#gateGo').addEventListener('click', gateCheck);
+$('#gateIn').addEventListener('keydown', e => { if (e.key === 'Enter') gateCheck(); });
+$('#gateNo').addEventListener('click', () => { $('#gate').hidden = true; $('#gateIn').blur(); });
+function openGrown(tab) {
+  hush();
+  gTab = tab || (P && P.id) || (store.players[0] && store.players[0].id) || 'add';
+  $('#voiceOn').checked = store.voice; pickVoice(); renderVoicePick();
+  if (NATIVE) $('#voiceHelp').textContent = 'For the most natural voice, download a Premium voice in Settings → Accessibility → Spoken Content → Voices → English (for example Ava or Zoe), then pick it here.';
+  hideConfirm(); renderGrown();
+  $('#grown').hidden = false;
+}
+function closeGrown() {
+  $('#grown').hidden = true;
+  if ($('#playView').hidden) { renderPicker(); buildPond(); }
+}
+function ageButtons(box, current, onPick) {
+  box.replaceChildren();
+  [3, 4, 5, 6].forEach(a => { const b = el('button', '', String(a)); b.type = 'button'; b.setAttribute('aria-pressed', a === current ? 'true' : 'false'); b.onclick = () => onPick(a); box.append(b); });
+}
+function renderGrown() {
+  const tabs = $('#tabs'); tabs.replaceChildren();
+  store.players.forEach(p => { const t = el('button', 'tab', `${p.avatar} ${p.name}`); t.setAttribute('aria-pressed', gTab === p.id ? 'true' : 'false'); t.onclick = () => { gTab = p.id; hideConfirm(); renderGrown(); }; tabs.append(t); });
+  const add = el('button', 'tab', '+ Add player'); add.setAttribute('aria-pressed', gTab === 'add' ? 'true' : 'false'); add.onclick = () => { gTab = 'add'; hideConfirm(); renderGrown(); }; tabs.append(add);
+
+  const pl = store.players.find(p => p.id === gTab);
+  $('#addPane').hidden = !!pl; $('#playerPane').hidden = !pl;
+  if (!pl) {
+    ageButtons($('#addAges'), addAge, a => { addAge = a; renderGrown(); });
+    $('#addTrack').textContent = `Plays the ${TRACK[trackFor(addAge)].label.toLowerCase()}.`;
+    return;
+  }
+  $('#pName').value = pl.name;
+  ageButtons($('#pAges'), pl.age, a => { pl.age = a; fixPlayer(pl); save(); if (P === pl) buildPond(); renderGrown(); });
+  $('#pTrack').textContent = `Plays the ${TRACK[pl.track].label.toLowerCase()}.`;
+  $('#headRow').hidden = pl.track !== 'big';
+  const list = $('#skillList'); list.replaceChildren();
+  const unlocked = k => { const n = SKILLS[k].needs; if (!n) return true; const s = pl.skills[n[0]]; return !!s && (s.level >= n[1] || s.mastered); };
+  for (const k of skillsFor(pl.track)) {
+    const s = pl.skills[k], def = SKILLS[k], open = unlocked(k);
+    const row = el('div', 'sk'), head = el('div');
+    head.append(el('b', '', def.name));
+    head.append(el('span', 'pill ' + (!open ? 'lock' : s.mastered ? 'done' : 'learn'), !open ? 'Locked' : s.mastered ? 'Mastered' : `Level ${s.level} of ${def.levels.length}`));
+    if (def.focus && !s.mastered) head.append(el('span', 'pill learn', 'Extra practice'));
+    const meta = el('div', 'meta');
+    if (!open) meta.textContent = `Opens after ${SKILLS[def.needs[0]].name} reaches level ${def.needs[1]}.`;
+    else {
+      meta.textContent = `${def.levels[s.level - 1]}${def.std ? ' (' + def.std[s.level - 1] + ')' : ''} · ${s.seen ? Math.round(100 * s.correct / s.seen) + '% first try over ' + s.seen : 'not tried yet'}`;
+      if (s.hist.length) { const d = el('span', 'dots'); d.setAttribute('aria-label', 'Recent answers'); s.hist.forEach(r => d.append(el('i', r ? 'y' : 'n'))); meta.append(d); }
+    }
+    const adj = el('div', 'adj'), dn = el('button', '', '−'), up = el('button', '', '+');
+    dn.setAttribute('aria-label', `Lower ${def.name} level`); up.setAttribute('aria-label', `Raise ${def.name} level`);
+    dn.disabled = s.level <= 1 && !s.mastered; up.disabled = s.level >= def.levels.length && s.mastered;
+    dn.onclick = () => { if (s.mastered) s.mastered = false; else s.level--; s.hist = []; save(); renderGrown(); };
+    up.onclick = () => { if (s.level < def.levels.length) s.level++; else s.mastered = true; s.hist = []; save(); renderGrown(); };
+    adj.append(dn, up); row.append(head, adj, meta); list.append(row);
+  }
+  $('#totals').textContent = `${pl.total} questions answered · ${pl.stickers.length} pond${pl.stickers.length === 1 ? '' : 's'} crossed.`;
+}
+$('#pName').addEventListener('change', e => { const pl = store.players.find(p => p.id === gTab); if (!pl) return; pl.name = e.target.value.trim().slice(0, 20) || pl.name; save(); renderGrown(); });
+$('#addGo').addEventListener('click', () => {
+  const name = $('#addName').value.trim().slice(0, 20);
+  if (!name) { $('#addName').focus(); $('#addTrack').textContent = 'Type a name first.'; return; }
+  const p = newPlayer(name, addAge); store.players.push(p); save();
+  $('#addName').value = ''; gTab = p.id; renderGrown(); showToast(`${name} added!`);
+});
+$('#headStart').addEventListener('click', () => {
+  const pl = store.players.find(p => p.id === gTab); if (!pl || pl.track !== 'big') return;
+  for (const k of skillsFor('big')) { const sk = pl.skills[k]; if (sk.level < (START[k] || 1)) { sk.level = START[k]; sk.hist = []; } }
+  save(); renderGrown(); showToast('Head start set!');
+});
+function confirmAsk(text, fn) { pending = fn; $('#confirmText').textContent = text; $('#confirmRow').hidden = false; $('#playerBtns').hidden = true; }
+function hideConfirm() { pending = null; $('#confirmRow').hidden = true; $('#playerBtns').hidden = false; }
+$('#confirmNo').addEventListener('click', hideConfirm);
+$('#confirmYes').addEventListener('click', () => { const fn = pending; hideConfirm(); if (fn) fn(); });
+$('#resetBtn').addEventListener('click', () => {
+  const pl = store.players.find(p => p.id === gTab); if (!pl) return;
+  confirmAsk(`Erase ${pl.name}'s progress and pond friends?`, () => {
+    Object.assign(pl, { skills: {}, review: [], total: 0, pad: 0, stickers: [] }); fixPlayer(pl); save();
+    if (P === pl) { buildPond(); ask(); }
+    renderGrown();
+  });
+});
+$('#removeBtn').addEventListener('click', () => {
+  const pl = store.players.find(p => p.id === gTab); if (!pl) return;
+  confirmAsk(`Remove ${pl.name} and all of ${pl.name}'s progress?`, () => {
+    store.players = store.players.filter(p => p !== pl); save();
+    if (P === pl) $('#home').click();
+    gTab = (store.players[0] && store.players[0].id) || 'add'; renderGrown();
+  });
+});
+$('#voiceOn').addEventListener('change', e => { store.voice = e.target.checked; if (!store.voice) hush(); save(); });
+$('#closeGrown').addEventListener('click', closeGrown);
+$('#privacyBtn').addEventListener('click', () => { const f = $('#privacyFrame'); if (!f.src) f.src = 'privacy.html'; $('#privacy').hidden = false; });
+$('#privacyClose').addEventListener('click', () => { $('#privacy').hidden = true; });
+function renderVoicePick() {
+  const sel = $('#voicePick'); sel.replaceChildren();
+  if (!voices.length) { const o = el('option', '', 'Default voice'); o.value = ''; sel.append(o); sel.disabled = true; return; }
+  sel.disabled = false;
+  voices.forEach(v => { const t = voiceInfo(v), q = /premium/i.test(t) ? ' (Premium)' : /enhanced/i.test(t) ? ' (Enhanced)' : ''; const o = el('option', '', v.name.replace(/\s*\((premium|enhanced)\)/i, '') + q); o.value = voiceId(v); sel.append(o); });
+  sel.value = voiceId(voice || voices[0]);
+}
+$('#voicePick').addEventListener('change', e => { store.voiceName = e.target.value; voice = voices.find(v => voiceId(v) === store.voiceName) || voice; save(); sayNow("Hi! I'm your math buddy. What is 8 plus 7?"); });
+$('#voiceTest').addEventListener('click', () => sayNow("Hi! I'm your math buddy. What is 8 plus 7?"));
+$('#grown').addEventListener('click', e => { if (e.target.id === 'grown') closeGrown(); });
+
+renderPicker();
+buildPond();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => placeFrog(false));
+})();
+</script>
+<script>
+if (!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) && 'serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
+</script>
+</body>
+</html>

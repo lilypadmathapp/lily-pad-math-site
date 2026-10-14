@@ -1,0 +1,16 @@
+{
+  "name": "Lily Pad Math",
+  "short_name": "Lily Pad",
+  "description": "A talking kindergarten math game that adjusts to your child as they play.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#e6f2ec",
+  "theme_color": "#b9e0dc",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
